@@ -22,13 +22,15 @@ par/or do
     end
   end
 with
-  await 10s;
+  await 60s;
 end
 
 _printf ("Status: %d\n", status);
 if status != _CONNECTED then
   escape 0;
 end
+
+await 3s;
 
 par/and do
   emit OUT_1;
