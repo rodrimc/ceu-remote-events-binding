@@ -4,13 +4,8 @@
 #include <assert.h>
 #include <inttypes.h>
 #include <unistd.h>
-#include <glib.h>
 #include <gio/gio.h>  
-#include <lua.h>
-#include <lauxlib.h>
-#include <lualib.h>
 #include "env_util.h"
-#include "env_events.h"
 
 
 #define TIME_FREQ 1 /*frequency in which the update_ceu_time callback 
@@ -19,54 +14,14 @@
 #define MAX_THREADS 5
 #define BUFF_SIZE 128
 
-#define ceu_out_assert(v) ceu_sys_assert(v)
-void ceu_sys_assert (int v) 
-{
-  assert(v);
-}
-
-#define ceu_out_log(m,s) ceu_sys_log(m,s)
-void ceu_sys_log (int mode, long s) 
-{
-  switch (mode) 
-  {
-    case 0:
-      printf("%s", (char*)s);
-      break;
-    case 1:
-      printf("%lX", s);
-      break;
-    case 2:
-      printf("%ld", s);
-      break;
-  }
-}
-
-#ifdef CEU_DEBUG
-#define _log(m) printf("(%p) LOG: %s\n", g_thread_self(), m)
-#else
-#define _log(m)
-#endif
-
-#define LUA_SERIALIZE_FUNC                           \
-              "function serialize (o)\n"             \
-                 "local result = '{\\n'\n"           \
-                 "for k,v in pairs(o) do\n"          \
-                   "result = result .. '  ' ..  k"   \
-                    " .. ' = \"' .. v .. '\",\\n'\n" \
-                 "end\n"                             \
-                 "result = result .. '}\\n'\n"       \
-                 "return result\n"                   \
-               "end" 
 
 /* Begin of global variables declaration */
 static GMainLoop *main_loop;
 static GSocketService *service;
-static uint16_t port_bound;
+static uint16_t port;
 static GHashTable *connections;     /* Connections table */
 static GHashTable *evt_bindings;    /* Event mappings table */
 static lua_State *L;
-
 /* End */
 
 /*Begin of forward declarations */
@@ -78,35 +33,17 @@ static gboolean incoming_callback (GSocketService *, GSocketConnection *,
 static gboolean update_ceu_time (gpointer);
 static gboolean setup_service (void);
 static void send_done (GObject *, GAsyncResult *, gpointer);
-static char *serialize (const char *);
-
 /* End */
 
 /* Begin of ceu_out_emit_* */
 #define ceu_out_emit_EVT_BIND(arg) bind (arg->_1, arg->_2, arg->_3)
 
-#define ceu_out_emit_CONNECT(arg)                                    \
-  GSocketClient *socket = g_socket_client_new ();                    \
-  g_socket_client_connect_to_host_async (socket, arg->_1,            \
-      port_bound == DEFAULT_PORT ? port_bound + 1 :                  \
-      port_bound - 1, NULL, evt_bind_async_connection_done, arg->_1); \
+#define ceu_out_emit_CONNECT(arg)                                     \
+  GSocketClient *socket = g_socket_client_new ();                     \
+  g_socket_client_connect_to_host_async (socket, arg->_1,             \
+      port == DEFAULT_PORT ? port + 1 :                   \
+      port - 1, NULL, evt_bind_async_connection_done, arg->_1); \
 /* end  */
-
-typedef enum
-{
-  DISCONNECTED = 0,
-  PENDING,
-  CONNECTED,
-  HOST_NOT_FOUND,
-  CONNECTION_REFUSED
-} CONNECTION_STATUS; /* TODO: extend this enum */
-
-  typedef struct _evt_bind
-{
-  char *out_evt;
-  char *in_evt;
-  char *address;
-} evt_bind;
 
 static void
 free_evt_bindings ()
@@ -168,65 +105,9 @@ send_done (GObject *obj, GAsyncResult *result, gpointer data)
 #endif
 }
 
-static void stackDump (lua_State *L) 
-{
-  int i;
-  int top = lua_gettop(L);
-  for (i = 1; i <= top; i++) 
-  {  /* repeat for each level */
-    int t = lua_type(L, i);
-    switch (t) 
-    {
-
-      case LUA_TSTRING:  /* strings */
-        printf("`%s'", lua_tostring(L, i));
-        break;
-
-      case LUA_TBOOLEAN:  /* booleans */
-        printf(lua_toboolean(L, i) ? "true" : "false");
-        break;
-
-      case LUA_TNUMBER:  /* numbers */
-        printf("%g", lua_tonumber(L, i));
-        break;
-
-      default:  /* other values */
-        printf("%s", lua_typename(L, t));
-        break;
-
-    }
-    printf("  ");  /* put a separator */
-  }
-  printf("\n");  /* end the listing */
-}
-
-static char *
-serialize (const char *evt)
-{
-  const char *message = NULL;
-
-  luaL_loadstring (L, LUA_SERIALIZE_FUNC); 
-  lua_pcall(L, 0, 0, 0);
-  lua_getglobal(L, "serialize");
- 
-  lua_newtable (L);
-  lua_pushstring (L, "evt");
-  lua_pushstring (L, evt);
-  lua_settable (L, -3);
-
-  if (lua_pcall (L, 1, 1, 0) != 0)
-    _log (lua_tostring (L, -1));
-  else
-    message = lua_tostring (L, -1);
-
-  lua_pop (L, 1);  
-
-  return strdup(message);
-}
-
 
 void
-default_evt_handler (const char *event)
+env_output_evt_handler (const char *event)
 {
   GSList *list = NULL;
   list = g_hash_table_lookup (evt_bindings, event);
@@ -239,10 +120,10 @@ default_evt_handler (const char *event)
     conn = g_hash_table_lookup (connections, bind->address);
     if (conn != NULL)
     {
-      GOutputStream *out_channel;
       char *buff;
+      GOutputStream *out_channel;
 
-      buff = serialize (bind->in_evt);
+      buff = serialize (L, bind->in_evt);
       if (buff == NULL)
         return;
  
@@ -257,11 +138,12 @@ default_evt_handler (const char *event)
 
 }
 
+#include "env_events.h"
 #include "_ceu_app.c"
 
 static uint64_t old_dt;
 static char CEU_DATA[sizeof(CEU_Main)];
-static tceu_app app;
+tceu_app app;
 
 static void
 evt_bind_async_connection_done (GObject *obj,
@@ -324,26 +206,21 @@ incoming_callback (GSocketService *service, GSocketConnection *connection,
 
     if (bytes_read > 0)
     {
-      char msg[16];
-      const char *table = "msg = ";
-      size_t len = strlen (table);
-      int index;
-
-      memmove (&buff[0] + len, &buff[0], strlen (&buff[0]));
-      strncpy (&buff[0], table, len);
-
-      luaL_loadstring (L, LUA_SERIALIZE_FUNC); 
-      lua_pcall(L, 0, 0, 0);
-      lua_getglobal(L, "serialize");
+      char msg[64];
+      char *evt;
 
       sprintf (msg, "%ld bytes read", bytes_read);
       _log (msg);
      
-      index = bytes_read + len < BUFF_SIZE ?
-        bytes_read + len : BUFF_SIZE - 1;
+      if (parse_message (L, buff, &evt) == 0)
+      {
+        sprintf (msg, "Event received: %s", evt);
+        _log (msg);
+        input_evt_handler (evt);
+      }
+      else
+        _log ("Error while parsing the message");
 
-      buff[bytes_read + len] = '\0';
-      _log (buff);
     }
     else /* Error or EOF  */
     {
@@ -386,23 +263,26 @@ static gboolean
 setup_service (void)
 {
   int max_attempts;
+  char log_msg[32];
 
   max_attempts = 5;
 
   gboolean success = FALSE;
   service = g_threaded_socket_service_new (MAX_THREADS); 
 
-  port_bound = DEFAULT_PORT;
+  port = DEFAULT_PORT;
   do
   {
     GError *error = NULL;
     success = g_socket_listener_add_inet_port ((GSocketListener*) service, 
-        port_bound, NULL, &error);
+        port, NULL, &error);
 
     if (!success)
     {
-      printf ("Cannot listen on port %d. Trying %d\n", port_bound, port_bound + 1);
-      port_bound += 1;
+      char debug[64];
+      sprintf (debug, "Cannot listen on port %d. Trying %d\n", port, port + 1);
+      _log (debug);
+      port += 1;
     } 
 
   } while (success == FALSE && max_attempts--);
@@ -412,12 +292,14 @@ setup_service (void)
 
   g_signal_connect (service, "run", G_CALLBACK (incoming_callback), NULL);
   g_socket_service_start (service);
-  printf ("Listening on port %d\n", port_bound);
+
+  sprintf (log_msg, "Listening on port %d\n", port);
+  _log (log_msg);
 
   return TRUE;
 }
 
-  int 
+int 
 main (int argc, char* arg[])
 {
   _log ("Main thread");

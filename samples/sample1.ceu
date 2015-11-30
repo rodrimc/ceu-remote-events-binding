@@ -1,49 +1,37 @@
 input _CONNECTION_STATUS CONNECT_DONE;
+input void IN_1;
 output (char&&) CONNECT; /* port? */
 output (char&&, char&&, char&&) EVT_BIND;
 output void OUT_1;
 
-event void in_1;
 
 native @nohold _printf ();
 native @plain _CONNECTION_STATUS;
 
-emit EVT_BIND => ("OUT_1", "in_1", "localhost");
+emit EVT_BIND => ("OUT_1", "IN_1", "localhost");
 var _CONNECTION_STATUS status;
-
-par/or do
-  loop do
-    emit CONNECT => "localhost";
-    status = await CONNECT_DONE; 
-    if status == _CONNECTED then
-      break;
-    else
-      await 2s;
-    end
-  end
-with
-  await 60s;
-end
-
-_printf ("Status: %d\n", status);
-if status != _CONNECTED then
-  escape 0;
-end
-
-await 3s;
-
+ 
 par/and do
+  par/or do
+    loop do
+      emit CONNECT => "localhost";
+      status = await CONNECT_DONE; 
+      if status == _CONNECTED then
+        break;
+      end
+    end
+  with
+    await 60s;
+  end
+
+  if status != _CONNECTED then
+    escape 0;
+  end
+  _printf ("Emiting OUT_1\n");
   emit OUT_1;
 with
-  await in_1;
+  await IN_1;
+  _printf ("IN_1 received\n");
 end
 
-/*
-par/or do
-  emit EVT_BIND => ("out_1", "in_1", "localhost");
-  await NET_BOUND;
-with
-  await in_1;
-end;
-*/
 escape 0;
