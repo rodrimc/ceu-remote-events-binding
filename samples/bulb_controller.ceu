@@ -1,0 +1,40 @@
+input _CONNECTION_STATUS CONNECT_DONE;
+input char KEY_INPUT;
+
+output (char&&) CONNECT; /* port? */
+output (char&&, char&&, char&&) EVT_BIND;
+output void KEY_UP;
+output void KEY_DOWN;
+
+emit EVT_BIND => ("KEY_UP", "BULB_INCREASE", "localhost");
+emit EVT_BIND => ("KEY_DOWN", "BULB_DECREASE", "localhost");
+
+native @nohold _printf ();
+native @plain _CONNECTION_STATUS;
+
+loop do
+  var _CONNECTION_STATUS status;
+  emit CONNECT => "localhost";
+  status = await CONNECT_DONE;
+  if status == _CONNECTED then
+    break;
+  end
+end
+
+_printf ("Connected\n");
+
+par/or do
+  every key in KEY_INPUT do
+    if key == 'k' then
+      _printf ("Emitting 'KEY_UP'\n");
+      emit KEY_UP;
+    else/if key == 'j' then
+      _printf ("Emitting 'KEY_DOWN'\n");
+      emit KEY_DOWN;
+    end
+  end
+with
+  await 15s;
+end
+
+escape 0;

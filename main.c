@@ -33,6 +33,7 @@ static gboolean incoming_callback (GSocketService *, GSocketConnection *,
 static gboolean update_ceu_time (gpointer);
 static gboolean setup_service (void);
 static void send_done (GObject *, GAsyncResult *, gpointer);
+static gboolean input_callback (GIOChannel *, GIOCondition, gpointer);
 /* End */
 
 /* Begin of ceu_out_emit_* */
@@ -96,9 +97,11 @@ send_done (GObject *obj, GAsyncResult *result, gpointer data)
   evt_bind *bind;
   GError *error = NULL;
   gssize bytes_written = 0;
-
+  
   bind = (evt_bind *) data;
-  bytes_written = g_output_stream_write_finish(obj, result, &error);
+  bytes_written = g_output_stream_write_finish(G_OUTPUT_STREAM(obj), result,
+      &error);
+  printf ("bytes written: %ld\n", bytes_written);
   if (error != 0)
     ceu_sys_go (&app, CEU_IN_EVT_DELIVERED, &bytes_written);
 
@@ -209,9 +212,12 @@ incoming_callback (GSocketService *service, GSocketConnection *connection,
       char msg[64];
       char *evt;
 
+      _log (buff);
+
       sprintf (msg, "%ld bytes read", bytes_read);
+      buff[bytes_read] = '\0';
       _log (msg);
-     
+
       if (parse_message (L, buff, &evt) == 0)
       {
         sprintf (msg, "Event received: %s", evt);
@@ -299,9 +305,31 @@ setup_service (void)
   return TRUE;
 }
 
+static gboolean 
+input_callback (GIOChannel *io, GIOCondition condition, gpointer data)
+{
+  gchar key;
+  GError *error = NULL;
+
+  switch (g_io_channel_read_chars (io, &key, sizeof(key), NULL, &error))
+  {
+#ifdef CEU_IN_KEY_INPUT
+    case G_IO_STATUS_NORMAL:
+      ceu_sys_go (&app, CEU_IN_KEY_INPUT, &key);
+      break;
+#endif    
+    case G_IO_STATUS_ERROR: 
+      _log (error->message);
+      break;
+  }
+  return TRUE;
+}
+
 int 
 main (int argc, char* arg[])
 {
+  GIOChannel *in_channel;
+
   _log ("Main thread");
 
   if (setup_service () == FALSE)
@@ -322,13 +350,17 @@ main (int argc, char* arg[])
   app.init (&app);
   
   main_loop = g_main_loop_new (NULL, FALSE);
+  in_channel = g_io_channel_unix_new (STDIN_FILENO);
+  g_io_add_watch (in_channel, G_IO_IN, input_callback, NULL); 
 
   old_dt = g_get_monotonic_time ();
 
   g_timeout_add (TIME_FREQ, update_ceu_time, NULL);
 
   g_main_loop_run (main_loop);
-  
+  g_main_loop_unref (main_loop);
+  g_io_channel_unref (in_channel);
+
   free_evt_bindings ();
   g_hash_table_destroy (evt_bindings);
   g_hash_table_destroy (connections);

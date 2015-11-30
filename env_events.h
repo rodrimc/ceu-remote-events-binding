@@ -17,4 +17,10 @@ input_evt_handler (const char *evt /*, const char *arg1, ...*/);
 #define ceu_out_emit_OUT_1(arg) \
   env_output_evt_handler("OUT_1")
 
+#define ceu_out_emit_KEY_UP(arg)\
+  env_output_evt_handler("KEY_UP")
+
+#define ceu_out_emit_KEY_DOWN(arg)\
+  env_output_evt_handler("KEY_DOWN")
+
 #endif /* ENV_EVENTS */

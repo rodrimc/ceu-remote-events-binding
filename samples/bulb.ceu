@@ -1,0 +1,36 @@
+input _CONNECTION_STATUS CONNECT_DONE;
+input void BULB_INCREASE;
+input void BULB_DECREASE;
+
+output (char&&) CONNECT; /* port? */
+
+native @nohold _printf ();
+native @plain _CONNECTION_STATUS;
+
+loop do
+  var _CONNECTION_STATUS status;
+  emit CONNECT => "localhost";
+  status = await CONNECT_DONE;
+  if status == _CONNECTED then
+    break;
+  end
+end
+
+_printf ("Connected\n");
+
+var int intensity = 0;
+par/or do
+  every BULB_INCREASE do
+    intensity = intensity + 1;  
+    _printf ("INTENSITY: %d\n", intensity);
+  end
+with
+  every BULB_DECREASE do
+    intensity = intensity - 1;  
+    _printf ("INTENSITY: %d\n", intensity);
+  end
+with
+  await 15s;
+end
+
+escape 0;

@@ -13,4 +13,16 @@ input_evt_handler (const char *evt /*, const char *arg1, ...*/)
     ceu_sys_go (&app, CEU_IN_IN_1, NULL);
   }
 #endif
+#ifdef CEU_IN_BULB_INCREASE
+  if (strcmp (evt, "BULB_INCREASE") == 0)
+  {
+    ceu_sys_go (&app, CEU_IN_BULB_INCREASE, NULL);
+  }
+#endif
+#ifdef CEU_IN_BULB_DECREASE
+  if (strcmp (evt, "BULB_DECREASE") == 0)
+  {
+    ceu_sys_go (&app, CEU_IN_BULB_DECREASE, NULL);
+  }
+#endif
 }
