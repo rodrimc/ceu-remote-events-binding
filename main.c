@@ -22,6 +22,14 @@ static uint16_t port;
 static GHashTable *connections;     /* Connections table */
 static GHashTable *evt_bindings;    /* Event mappings table */
 static lua_State *L;
+static char *routes_file;
+static GOptionEntry entries [] = 
+ {
+   { "routes", 'r', 0, G_OPTION_ARG_FILENAME, &routes_file, "File that "
+     "specifies the static route table", "<file>" },
+   { NULL }
+ };
+
 /* End */
 
 /*Begin of forward declarations */
@@ -34,6 +42,7 @@ static gboolean update_ceu_time (gpointer);
 static gboolean setup_service (void);
 static void send_done (GObject *, GAsyncResult *, gpointer);
 static gboolean input_callback (GIOChannel *, GIOCondition, gpointer);
+static void load_route_table ();
 /* End */
 
 /* Begin of ceu_out_emit_* */
@@ -325,10 +334,49 @@ input_callback (GIOChannel *io, GIOCondition condition, gpointer data)
   return TRUE;
 }
 
+static void 
+load_route_table ()
+{
+  int index;
+  if (luaL_loadfile (L, routes_file) != 0 || lua_pcall(L, 0, 1, 0) != 0)
+  {
+    printf ("%s", lua_tostring (L, -1));
+    lua_pop (L, 1);
+  }
+  lua_pushnil (L);
+  while (lua_next (L, 1) != 0)
+  {
+    luaL_checktype (L, -1, LUA_TTABLE);
+    int n_keys = luaL_len (L, -1);
+    if (n_keys == 3)
+    {
+      const char *in_evt;
+      const char *out_evt;
+      const char *address;
+      
+      lua_rawgeti (L, 3, 1);
+      lua_rawgeti (L, 3, 2);
+      lua_rawgeti (L, 3, 3);
+      
+      in_evt = lua_tostring (L, -3);
+      out_evt = lua_tostring (L, -2);
+      address = lua_tostring (L, -1);
+     
+      bind (in_evt, out_evt, address);
+      
+      lua_pop (L, 3);
+    }
+    lua_pop (L, 1);
+  }
+  lua_pop (L, 1);
+}
+
 int 
-main (int argc, char* arg[])
+main (int argc, char* argv[])
 {
   GIOChannel *in_channel;
+  GOptionContext *context;
+  GError *error = NULL
 
   _log ("Main thread");
 
@@ -349,6 +397,16 @@ main (int argc, char* arg[])
   app.init = &ceu_app_init;
   app.init (&app);
   
+  context = g_option_context_new (NULL);
+  g_option_context_add_main_entries (context, entries, NULL);
+  if (!g_option_context_parse (context, &argc, &argv, &error))
+  {
+    printf ("Option parsing failed: %s\n", error->message);
+    return 1;
+  }
+  if (routes_file != NULL)
+    load_route_table();
+
   main_loop = g_main_loop_new (NULL, FALSE);
   in_channel = g_io_channel_unix_new (STDIN_FILENO);
   g_io_add_watch (in_channel, G_IO_IN, input_callback, NULL); 
