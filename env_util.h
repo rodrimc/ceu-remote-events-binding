@@ -8,7 +8,7 @@
 #include <stdio.h>
 
 #ifdef ENV_DEBUG
-#define LOG(m) assert (NULL != NULL) 
+#define LOG(m) printf("(%p) LOG: %s\n", g_thread_self(), m) 
 #else
 #define LOG(m)
 #endif
