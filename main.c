@@ -27,6 +27,8 @@ static GOptionEntry entries [] =
  {
    { "routes", 'r', 0, G_OPTION_ARG_FILENAME, &routes_file, "File that "
      "specifies the static route table", "<file>" },
+   { "port", 'p', 0, G_OPTION_ARG_INT, &port, "Port to listen for incoming "
+     "connections. Default=8888", "PORT" },
    { NULL }
  };
 
@@ -36,13 +38,13 @@ static GOptionEntry entries [] =
 static void evt_bind_async_connection_done (GObject *, GAsyncResult *, 
     gpointer);
 static void bind (const char *, const char *, const char *);
-static gboolean incoming_callback (GSocketService *, GSocketConnection *,
+static gboolean connection_handler (GSocketService *, GSocketConnection *,
     GObject *, gpointer);
 static gboolean update_ceu_time (gpointer);
 static gboolean setup_service (void);
 static void send_done (GObject *, GAsyncResult *, gpointer);
 static gboolean input_callback (GIOChannel *, GIOCondition, gpointer);
-static void load_route_table ();
+static void load_route_table (void);
 /* End */
 
 /* Begin of ceu_out_emit_* */
@@ -199,7 +201,7 @@ evt_bind_async_connection_done (GObject *obj,
 }
 
 static gboolean
-incoming_callback (GSocketService *service, GSocketConnection *connection,
+connection_handler (GSocketService *service, GSocketConnection *connection,
     GObject *source, gpointer user_data)
 {
   GInputStream *input_stream = NULL;
@@ -281,41 +283,31 @@ update_ceu_time (gpointer data)
 static gboolean
 setup_service (void)
 {
+  GError *error = NULL;
   int max_attempts;
   char log_msg[32];
-
-  max_attempts = 5;
-
   gboolean success = FALSE;
+  
   service = g_threaded_socket_service_new (MAX_THREADS); 
+    
+  success = g_socket_listener_add_inet_port ((GSocketListener*) service, 
+      port, NULL, &error);
 
-  port = DEFAULT_PORT;
-  do
+  if (!success)
   {
-    GError *error = NULL;
-    success = g_socket_listener_add_inet_port ((GSocketListener*) service, 
-        port, NULL, &error);
+    char debug[64];
+    sprintf (debug, "Cannot listen on port %d.\n", port);
+    LOG (debug);
+  } 
+  else
+  {
+    g_signal_connect (service, "run", G_CALLBACK (connection_handler), NULL);
+    g_socket_service_start (service);
 
-    if (!success)
-    {
-      char debug[64];
-      sprintf (debug, "Cannot listen on port %d. Trying %d\n", port, port + 1);
-      LOG (debug);
-      port += 1;
-    } 
-
-  } while (success == FALSE && max_attempts--);
-
-  if (max_attempts == 0)
-    return FALSE;
-
-  g_signal_connect (service, "run", G_CALLBACK (incoming_callback), NULL);
-  g_socket_service_start (service);
-
-  sprintf (log_msg, "Listening on port %d\n", port);
-  LOG (log_msg);
-
-  return TRUE;
+    sprintf (log_msg, "Listening on port %d\n", port);
+    LOG (log_msg);
+  }
+  return success;
 }
 
 static gboolean 
@@ -384,9 +376,19 @@ main (int argc, char* argv[])
 
   LOG ("Main thread");
 
+  context = g_option_context_new (NULL);
+  g_option_context_add_main_entries (context, entries, NULL);
+  if (!g_option_context_parse (context, &argc, &argv, &error))
+  {
+    printf ("Option parsing failed: %s\n", error->message);
+    return 1;
+  }
+
+  port = (port == 0 ) ? DEFAULT_PORT : port;
+  
   if (setup_service () == FALSE)
   {
-    printf ("Could not setup the service.\nExiting...");
+    printf ("Could not setup the service.\nExiting...\n");
     return 0;
   }
 
@@ -401,13 +403,6 @@ main (int argc, char* argv[])
   app.init = &ceu_app_init;
   app.init (&app);
   
-  context = g_option_context_new (NULL);
-  g_option_context_add_main_entries (context, entries, NULL);
-  if (!g_option_context_parse (context, &argc, &argv, &error))
-  {
-    printf ("Option parsing failed: %s\n", error->message);
-    return 1;
-  }
   if (routes_file != NULL)
     load_route_table();
 
