@@ -1,6 +1,6 @@
 input _CONNECTION_STATUS CONNECT_DONE;
-input void BULB_INCREASE;
-input void BULB_DECREASE;
+input int BULB_INCREASE;
+input int BULB_DECREASE;
 
 output (char&&) CONNECT; /* port? */
 
@@ -20,13 +20,13 @@ _printf ("Connected\n");
 
 var int intensity = 0;
 par/or do
-  every BULB_INCREASE do
-    intensity = intensity + 1;  
+  every value in BULB_INCREASE do
+    intensity = intensity + value; 
     _printf ("INTENSITY: %d\n", intensity);
   end
 with
-  every BULB_DECREASE do
-    intensity = intensity - 1;  
+  every value in BULB_DECREASE do
+    intensity = intensity - value;  
     _printf ("INTENSITY: %d\n", intensity);
   end
 with

@@ -1,4 +1,5 @@
 #include <string.h>
+#include <stdlib.h>
 #include "env_util.h"
 
 void ceu_sys_assert (int v) 
@@ -68,11 +69,13 @@ stackDump (lua_State *L)
 }
 
 int 
-parse_message (lua_State *L, char *buff, char **evt)
+parse_message (lua_State *L, char *buff, char ***evt, int *size)
 {
   const char *prefix = "msg = ";
   size_t len = strlen (prefix);
-  int index;
+  int index = 0;
+
+  *size = 0;
 
   memmove (buff + len, buff, strlen (buff));
   strncpy (buff, prefix, len);
@@ -85,19 +88,61 @@ parse_message (lua_State *L, char *buff, char **evt)
   }
   lua_getglobal(L, "msg");
 
-  lua_pushstring (L, "evt");
-  lua_gettable (L, -2);
-  
-  *evt = strdup (lua_tostring (L, -1));
-  lua_pop (L, 2);
+  lua_pushnil (L);
+  while (lua_next (L, 1) != 0)
+  {
+    const char *key;
+    const char *value;
+   
+    *size = *size + 1;
+    key = lua_tostring (L, -2);
+    value = lua_tostring (L, -1);
+    
+    lua_pop (L, 2);
+    lua_pushstring (L, value);
+    lua_pushstring (L, key);
+    lua_pushstring (L, key);
+  }
+
+  *evt = (char **) malloc (*size * sizeof (char *));
+  while (lua_gettop (L) > 1)
+  {
+    const char *key;
+    const char *value;
+    char *end;
+    int index = 0;
+
+    key = lua_tostring (L, -1);
+    value = lua_tostring (L, -2);
+    
+    if (strcmp (key, "evt") != 0)
+    {
+      index = (int) strtol (&key[3], &end, 10);
+      if (&key[3] == end)
+        index = -1;
+      else
+        index++;
+    }
+    if (index >= 0)
+      (*evt)[index] = strdup(value);
+
+    lua_pop (L, 2);
+  }
+ 
+  /* for (index = 0; index < *size; index++) */
+  /*   printf ("evt[%d]: %s\n", index, (*evt)[index]); */
+
+  lua_pop (L, 1);
 
   return 0;
 }
 
 char *
-serialize (lua_State *L, const char *evt)
+serialize (lua_State *L, const char *evt, va_list args)
 {
   const char *message = NULL;
+  const char *arg;
+  int i = 0;
 
   luaL_loadstring (L, LUA_SERIALIZE_FUNC); 
   lua_pcall(L, 0, 0, 0);
@@ -108,6 +153,17 @@ serialize (lua_State *L, const char *evt)
   lua_pushstring (L, evt);
   lua_settable (L, -3);
 
+  while ((arg = va_arg (args, const char*)) != NULL)
+  {
+    char prefix[6];
+    
+    sprintf (prefix, "arg%d", i++);
+
+    lua_pushstring (L, prefix);
+    lua_pushstring (L, arg);
+    lua_settable (L, -3);
+  }
+  
   if (lua_pcall (L, 1, 1, 0) != 0)
     LOG (lua_tostring (L, -1));
   else

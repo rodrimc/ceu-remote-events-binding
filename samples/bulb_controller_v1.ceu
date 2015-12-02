@@ -3,8 +3,8 @@ input char KEY_INPUT;
 
 output (char&&) CONNECT; /* port? */
 output (char&&, char&&, char&&) EVT_BIND;
-output void KEY_UP;
-output void KEY_DOWN;
+output (int) KEY_UP;
+output (int) KEY_DOWN;
 
 native @nohold _printf ();
 native @plain _CONNECTION_STATUS;
@@ -24,10 +24,10 @@ par/or do
   every key in KEY_INPUT do
     if key == 'k' then
       _printf ("Emitting 'KEY_UP'\n");
-      emit KEY_UP;
+      emit KEY_UP => 5;
     else/if key == 'j' then
       _printf ("Emitting 'KEY_DOWN'\n");
-      emit KEY_DOWN;
+      emit KEY_DOWN => 2;
     end
   end
 with

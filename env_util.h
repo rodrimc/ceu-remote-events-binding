@@ -6,6 +6,7 @@
 #include <glib.h>
 #include <assert.h>
 #include <stdio.h>
+#include <stdarg.h>
 
 #ifdef ENV_DEBUG
 #define LOG(m) printf("(%p) LOG: %s\n", g_thread_self(), m) 
@@ -34,10 +35,10 @@ void
 stackDump (lua_State *L);
 
 int 
-parse_message (lua_State *, char *, char **);
+parse_message (lua_State *, char *, char ***, int *);
 
 char *
-serialize (lua_State *, const char *);
+serialize (lua_State *, const char *, va_list);
 
 #ifndef ceu_out_assert
   #define ceu_out_assert(v) ceu_sys_assert(v)

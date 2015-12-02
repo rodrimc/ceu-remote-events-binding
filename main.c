@@ -121,9 +121,13 @@ send_done (GObject *obj, GAsyncResult *result, gpointer data)
 
 
 void
-env_output_evt_handler (const char *event)
+env_output_evt_handler (const char *event, ...)
 {
   GSList *list = NULL;
+  va_list args;
+
+  va_start (args, event);
+
   list = g_hash_table_lookup (evt_bindings, event);
 
   while (list != NULL)
@@ -137,7 +141,7 @@ env_output_evt_handler (const char *event)
       char *buff;
       GOutputStream *out_channel;
 
-      buff = serialize (L, bind->in_evt);
+      buff = serialize (L, bind->in_evt, args);
       if (buff == NULL)
         return;
  
@@ -150,6 +154,7 @@ env_output_evt_handler (const char *event)
     list = list->next;
   }
 
+  va_end (args);
 }
 
 #include "env_events.h"
@@ -215,25 +220,29 @@ connection_handler (GSocketService *service, GSocketConnection *connection,
     char buff [BUFF_SIZE];
     gssize bytes_read;
 
+    memset (buff, '\0', BUFF_SIZE);
     bytes_read = g_input_stream_read (input_stream, &buff, BUFF_SIZE, NULL, 
         &error);
 
     if (bytes_read > 0)
     {
+      int size;
       char msg[64];
-      char *evt;
+      char **evt;
 
       LOG (buff);
 
       sprintf (msg, "%ld bytes read", bytes_read);
-      buff[bytes_read] = '\0';
       LOG (msg);
 
-      if (parse_message (L, buff, &evt) == 0)
+      if (parse_message (L, buff, &evt, &size) == 0)
       {
-        sprintf (msg, "Event received: %s", evt);
+        int i;
+        sprintf (msg, "Event received: %s", evt[0]);
         LOG (msg);
-        input_evt_handler (evt);
+        input_evt_handler (evt, size);
+        for (i = 0; i < size; i++)
+          free (evt[i]);
       }
       else
       {
