@@ -5,12 +5,12 @@
 #include <lualib.h>
 #include <glib.h>
 #include <assert.h>
-
+#include <stdio.h>
 
 #ifdef ENV_DEBUG
-#define _log(m) printf("(%p) LOG: %s\n", g_thread_self(), m)
+#define LOG(m) assert (NULL != NULL) 
 #else
-#define _log(m)
+#define LOG(m)
 #endif
 
 typedef enum

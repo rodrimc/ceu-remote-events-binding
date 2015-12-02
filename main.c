@@ -176,7 +176,7 @@ evt_bind_async_connection_done (GObject *obj,
     g_hash_table_insert (connections, strdup (address), conn);
     sprintf (log_buff, "Connected to %s", address);
 
-    _log (log_buff);
+    LOG (log_buff);
   }
   else
   {
@@ -188,8 +188,8 @@ evt_bind_async_connection_done (GObject *obj,
       status = DISCONNECTED;
     sprintf (log_buff, "Error code: %d", error->code);
 
-    _log (error->message);
-    _log (log_buff);
+    LOG (error->message);
+    LOG (log_buff);
   }
 #ifdef CEU_IN_CONNECT_DONE
   ceu_sys_go (&app, CEU_IN_CONNECT_DONE, &status);
@@ -204,7 +204,7 @@ incoming_callback (GSocketService *service, GSocketConnection *connection,
 {
   GInputStream *input_stream = NULL;
 
-  _log ("New connection");
+  LOG ("New connection");
   input_stream = g_io_stream_get_input_stream (G_IO_STREAM (connection));
 
   while (g_socket_connection_is_connected (connection))
@@ -221,32 +221,36 @@ incoming_callback (GSocketService *service, GSocketConnection *connection,
       char msg[64];
       char *evt;
 
-      _log (buff);
+      LOG (buff);
 
       sprintf (msg, "%ld bytes read", bytes_read);
       buff[bytes_read] = '\0';
-      _log (msg);
+      LOG (msg);
 
       if (parse_message (L, buff, &evt) == 0)
       {
         sprintf (msg, "Event received: %s", evt);
-        _log (msg);
+        LOG (msg);
         input_evt_handler (evt);
       }
       else
-        _log ("Error while parsing the message");
+      {
+        LOG ("Error while parsing the message");
+      }
 
     }
     else /* Error or EOF  */
     {
       if (error != NULL)
-        _log (error->message);
+      {
+        LOG (error->message);
+      } 
 
       break;
     }
   }
 
-  _log ("Connection closed");
+  LOG ("Connection closed");
   
   return FALSE;
 }
@@ -296,7 +300,7 @@ setup_service (void)
     {
       char debug[64];
       sprintf (debug, "Cannot listen on port %d. Trying %d\n", port, port + 1);
-      _log (debug);
+      LOG (debug);
       port += 1;
     } 
 
@@ -309,7 +313,7 @@ setup_service (void)
   g_socket_service_start (service);
 
   sprintf (log_msg, "Listening on port %d\n", port);
-  _log (log_msg);
+  LOG (log_msg);
 
   return TRUE;
 }
@@ -328,7 +332,7 @@ input_callback (GIOChannel *io, GIOCondition condition, gpointer data)
       break;
 #endif    
     case G_IO_STATUS_ERROR: 
-      _log (error->message);
+      LOG (error->message);
       break;
   }
   return TRUE;
@@ -376,9 +380,9 @@ main (int argc, char* argv[])
 {
   GIOChannel *in_channel;
   GOptionContext *context;
-  GError *error = NULL
+  GError *error = NULL;
 
-  _log ("Main thread");
+  LOG ("Main thread");
 
   if (setup_service () == FALSE)
   {

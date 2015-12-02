@@ -79,7 +79,7 @@ parse_message (lua_State *L, char *buff, char **evt)
 
   if (luaL_loadstring (L, buff) != 0 || lua_pcall(L, 0, 0, 0) != 0)
   {
-    _log (lua_tostring (L, -1));
+    LOG (lua_tostring (L, -1));
     lua_pop (L, 1);
     return 1;
   }
@@ -88,13 +88,6 @@ parse_message (lua_State *L, char *buff, char **evt)
   lua_pushstring (L, "evt");
   lua_gettable (L, -2);
   
-#if 0
-  index = bytes_read + len < BUFF_SIZE ?
-    bytes_read + len : BUFF_SIZE - 1;
-
-  buff[bytes_read + len] = '\0';
-  _log (buff);
-#endif
   *evt = strdup (lua_tostring (L, -1));
   lua_pop (L, 2);
 
@@ -116,7 +109,7 @@ serialize (lua_State *L, const char *evt)
   lua_settable (L, -3);
 
   if (lua_pcall (L, 1, 1, 0) != 0)
-    _log (lua_tostring (L, -1));
+    LOG (lua_tostring (L, -1));
   else
     message = lua_tostring (L, -1);
 
