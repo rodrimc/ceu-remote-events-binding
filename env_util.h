@@ -30,6 +30,11 @@ typedef struct _evt_bind
   char *address;
 } evt_bind;
 
+void 
+ceu_sys_assert (int);
+
+void 
+ceu_sys_log (int, long);
 
 void 
 stackDump (lua_State *L);

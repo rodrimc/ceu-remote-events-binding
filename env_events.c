@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include "env_events.h"
 #include "env_util.h"
 #include "_ceu_app.h"
@@ -22,7 +23,7 @@ input_evt_handler (char **evt, int size)
     {
       char *endptr;
       int value;
-      value = (int )strtol (evt[1], &endptr, 10);
+      value = (int) strtol (evt[1], &endptr, 10);
       if (evt[1] != endptr)
       {
         if (strcmp (evt[0], "BULB_INCREASE") == 0)
