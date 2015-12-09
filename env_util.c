@@ -138,10 +138,12 @@ parse_message (lua_State *L, char *buff, char ***evt, int *size)
 }
 
 char *
-serialize (lua_State *L, const char *evt, va_list args)
+serialize (lua_State *L, const char *evt, const char *args)
 {
   const char *message = NULL;
-  const char *arg;
+  const char *token;
+  char *encoded_args = NULL; 
+  char *saveptr;
   int i = 0;
 
   luaL_loadstring (L, LUA_SERIALIZE_FUNC); 
@@ -153,16 +155,21 @@ serialize (lua_State *L, const char *evt, va_list args)
   lua_pushstring (L, evt);
   lua_settable (L, -3);
 
-  while ((arg = va_arg (args, const char*)) != NULL)
+  encoded_args = strdup (args);
+  token = strtok_r (encoded_args, ARGS_DELIMITER, &saveptr);
+  while (token != NULL)
   {
     char prefix[6];
     
     sprintf (prefix, "arg%d", i++);
 
     lua_pushstring (L, prefix);
-    lua_pushstring (L, arg);
+    lua_pushstring (L, token);
     lua_settable (L, -3);
+    token = strtok_r (NULL, ARGS_DELIMITER, &saveptr);
   }
+  
+  free (encoded_args);
   
   if (lua_pcall (L, 1, 1, 0) != 0)
     LOG (lua_tostring (L, -1));
@@ -173,4 +180,41 @@ serialize (lua_State *L, const char *evt, va_list args)
 
   return strdup(message);
 }
+
+/* char * */
+/* serialize (lua_State *L, const char *evt, va_list args) */
+/* { */
+/*   const char *message = NULL; */
+/*   const char *arg; */
+/*   int i = 0; */
+
+/*   luaL_loadstring (L, LUA_SERIALIZE_FUNC); */ 
+/*   lua_pcall(L, 0, 0, 0); */
+/*   lua_getglobal(L, "serialize"); */
+ 
+/*   lua_newtable (L); */
+/*   lua_pushstring (L, "evt"); */
+/*   lua_pushstring (L, evt); */
+/*   lua_settable (L, -3); */
+
+/*   while ((arg = va_arg (args, const char*)) != NULL) */
+/*   { */
+/*     char prefix[6]; */
+    
+/*     sprintf (prefix, "arg%d", i++); */
+
+/*     lua_pushstring (L, prefix); */
+/*     lua_pushstring (L, arg); */
+/*     lua_settable (L, -3); */
+/*   } */
+  
+/*   if (lua_pcall (L, 1, 1, 0) != 0) */
+/*     LOG (lua_tostring (L, -1)); */
+/*   else */
+/*     message = lua_tostring (L, -1); */
+
+/*   lua_pop (L, 1); */  
+
+/*   return strdup(message); */
+/* } */
 

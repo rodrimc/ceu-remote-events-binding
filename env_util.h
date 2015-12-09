@@ -7,12 +7,16 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include "env_msg_service.h"
 
 #ifdef ENV_DEBUG
 #define LOG(m) printf("(%p) LOG: %s\n", g_thread_self(), m) 
 #else
 #define LOG(m)
 #endif
+
+#define BUFF_SIZE 128
+#define ARGS_DELIMITER "*"
 
 typedef enum
 {
@@ -30,6 +34,13 @@ typedef struct _evt_bind
   char *address;
 } evt_bind;
 
+typedef struct _conn_data
+{
+  GSocketConnection *conn;
+  msg_service *service;
+  const char *address;
+} conn_data;
+
 void 
 ceu_sys_assert (int);
 
@@ -43,7 +54,7 @@ int
 parse_message (lua_State *, char *, char ***, int *);
 
 char *
-serialize (lua_State *, const char *, va_list);
+serialize (lua_State *, const char *, const char *);
 
 #ifndef ceu_out_assert
   #define ceu_out_assert(v) ceu_sys_assert(v)

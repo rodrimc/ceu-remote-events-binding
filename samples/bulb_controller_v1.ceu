@@ -1,24 +1,9 @@
-input _CONNECTION_STATUS CONNECT_DONE;
 input char KEY_INPUT;
 
-output (char&&) CONNECT; /* port? */
-output (char&&, char&&, char&&) EVT_BIND;
 output (int) KEY_UP;
 output (int) KEY_DOWN;
 
 native @nohold _printf ();
-native @plain _CONNECTION_STATUS;
-
-loop do
-  var _CONNECTION_STATUS status;
-  emit CONNECT => "localhost";
-  status = await CONNECT_DONE;
-  if status == _CONNECTED then
-    break;
-  end
-end
-
-_printf ("Connected\n");
 
 par/or do
   every key in KEY_INPUT do

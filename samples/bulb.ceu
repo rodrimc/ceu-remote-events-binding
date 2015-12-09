@@ -1,20 +1,7 @@
-input _CONNECTION_STATUS CONNECT_DONE;
 input int BULB_INCREASE;
 input int BULB_DECREASE;
 
-output (char&&) CONNECT; /* port? */
-
 native @nohold _printf ();
-native @plain _CONNECTION_STATUS;
-
-loop do
-  var _CONNECTION_STATUS status;
-  emit CONNECT => "localhost";
-  status = await CONNECT_DONE;
-  if status == _CONNECTED then
-    break;
-  end
-end
 
 _printf ("Connected\n");
 
@@ -30,7 +17,7 @@ with
     _printf ("INTENSITY: %d\n", intensity);
   end
 with
-  await 15s;
+  await 100s;
 end
 
 escape 0;

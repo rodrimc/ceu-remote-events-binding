@@ -2,7 +2,8 @@ CFLAGS = -DCEU_DEBUG #-DCEU_DEBUG_TRAILS
 
 all:
 	ceu --cpp-args "-I ." $(CEUFILE)
-	gcc -Werror -g -Os env_util.c main.c env_events.c	  $(CFLAGS) `pkg-config gio-2.0 lua5.2 --cflags --libs` \
+	gcc -Werror -g -Os env_util.c main.c env_events.c	env_msg_service.c \
+	$(CFLAGS) `pkg-config gio-2.0 lua5.2 --cflags --libs` 							\
 	-o $(basename $(CEUFILE))
 
 clean:

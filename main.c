@@ -12,8 +12,6 @@
                       is called (ms) */
 #define DEFAULT_PORT 8888
 #define MAX_THREADS 5
-#define BUFF_SIZE 128
-
 
 /* Begin of global variables declaration */
 static GMainLoop *main_loop;
@@ -31,7 +29,6 @@ static GOptionEntry entries [] =
      "connections. Default=8888", "PORT" },
    { NULL }
  };
-
 /* End */
 
 /*Begin of forward declarations */
@@ -43,19 +40,24 @@ static gboolean connection_handler (GSocketService *, GSocketConnection *,
 static gboolean update_ceu_time (gpointer);
 static gboolean setup_service (void);
 static void send_done (GObject *, GAsyncResult *, gpointer);
-static gboolean input_callback (GIOChannel *, GIOCondition, gpointer);
+static gboolean keyboard_input_callback (GIOChannel *, GIOCondition, gpointer);
 static void load_route_table (void);
+static void destroy_conn_data (gpointer);
 /* End */
 
 /* Begin of ceu_out_emit_* */
 #define ceu_out_emit_EVT_BIND(arg) bind (arg->_1, arg->_2, arg->_3)
-
-#define ceu_out_emit_CONNECT(arg)                                     \
-  GSocketClient *socket = g_socket_client_new ();                     \
-  g_socket_client_connect_to_host_async (socket, arg->_1,             \
-      port == DEFAULT_PORT ? port + 1 :                   \
-      port - 1, NULL, evt_bind_async_connection_done, arg->_1); \
 /* end  */
+
+static void
+destroy_conn_data (gpointer _data)
+{
+  conn_data *data = (conn_data *) _data;
+  if (data->conn != NULL)
+    g_object_unref (G_OBJECT(data->conn));
+  msg_service_destroy (data->service);
+  free (data);
+}
 
 static void
 free_evt_bindings ()
@@ -80,8 +82,6 @@ free_evt_bindings ()
 
       l = l->next;
     }
-
-    g_free (key);
   }
 }
 
@@ -98,25 +98,31 @@ bind (const char *out_evt, const char *in_evt, const char *address)
   
   g_hash_table_insert (evt_bindings, bind->out_evt, 
       g_slist_append (g_hash_table_lookup(evt_bindings, bind->out_evt), bind));
-
 }
 
 static void
-send_done (GObject *obj, GAsyncResult *result, gpointer data)
+send_done (GObject *obj, GAsyncResult *result, gpointer _data)
 {
-#ifdef CEU_IN_EVT_DELIVERED
-  evt_bind *bind;
+  conn_data *data;
   GError *error = NULL;
   gssize bytes_written = 0;
   
-  bind = (evt_bind *) data;
+  data = (conn_data *) _data;
   bytes_written = g_output_stream_write_finish(G_OUTPUT_STREAM(obj), result,
       &error);
   printf ("bytes written: %ld\n", bytes_written);
-  if (error != 0)
+  if (error == 0)
+  {
+#ifdef CEU_IN_EVT_DELIVERED
     ceu_sys_go (&app, CEU_IN_EVT_DELIVERED, &bytes_written);
-
 #endif
+  }
+  else
+  {
+    printf ("ERROR: %s\n", error->message);
+  }
+  if (msg_service_has_pending_message (data->service))
+    msg_service_send (data->service, data->conn);
 }
 
 
@@ -124,37 +130,62 @@ void
 env_output_evt_handler (const char *event, ...)
 {
   GSList *list = NULL;
+  GString *tmp_string;
+  const char* arg;
+  char *encoded_args;
+  char *serialized_args;
   va_list args;
 
+  tmp_string = g_string_new (NULL);
   va_start (args, event);
-
+  while ((arg = va_arg (args, const char*)) != NULL)
+  {
+    g_string_append (tmp_string, arg);
+    g_string_append (tmp_string, ARGS_DELIMITER);
+  }
+  va_end (args);
+  
+  encoded_args = g_string_free (tmp_string, FALSE);
   list = g_hash_table_lookup (evt_bindings, event);
 
   while (list != NULL)
   {
+    conn_data *data = NULL;
     GSocketConnection *conn = NULL;
     evt_bind *bind = (evt_bind *) list->data;
    
-    conn = g_hash_table_lookup (connections, bind->address);
-    if (conn != NULL)
+    data = g_hash_table_lookup (connections, bind->address);
+    if (data == NULL)
     {
-      char *buff;
-      GOutputStream *out_channel;
+      msg_service *service = msg_service_new (); 
+      data = g_new0 (conn_data, 1);
+      data->service = service;
+      data->address = bind->address; /* Don't need to free data->address */
+     
+      msg_service_register_send_callback (service, send_done);
+      g_hash_table_insert (connections, strdup (bind->address), data);
+    }
 
-      buff = serialize (L, bind->in_evt, args);
-      if (buff == NULL)
-        return;
- 
-      out_channel = g_io_stream_get_output_stream (G_IO_STREAM(conn));
-      g_output_stream_write_async (out_channel, buff, strlen (buff), 
-          G_PRIORITY_DEFAULT, NULL, send_done, bind);
+    conn = data->conn;
 
-      free (buff);
+    serialized_args = serialize (L, bind->in_evt, encoded_args);
+    msg_service_push (data->service, serialized_args, data); 
+    free (serialized_args);
+
+    if (conn != NULL && g_socket_connection_is_connected(conn) == TRUE)
+    {
+      msg_service_send (data->service, conn);
+    }
+    else
+    {
+      GSocketClient *socket = g_socket_client_new (); 
+      g_socket_client_connect_to_host_async (socket, bind->address,
+          port == DEFAULT_PORT ? port + 1 :             
+          port - 1, NULL, evt_bind_async_connection_done, 
+          data);
     }
     list = list->next;
   }
-
-  va_end (args);
 }
 
 #include "env_events.h"
@@ -165,38 +196,50 @@ static char CEU_DATA[sizeof(CEU_Main)];
 tceu_app app;
 
 static void
-evt_bind_async_connection_done (GObject *obj,
-    GAsyncResult *result, gpointer data)
+evt_bind_async_connection_done (GObject *obj, GAsyncResult *result, 
+    gpointer _data)
 {
   evt_bind *bind;
+  conn_data *data;
   GError *error = NULL;
   GSocketConnection *conn;
   CONNECTION_STATUS status;
   char log_buff[64];
   
+  data = (conn_data *) _data;
   conn = g_socket_client_connect_finish ((GSocketClient *)obj, result, &error);
+  if (data->conn != NULL)
+    g_object_unref (G_OBJECT(data->conn));
+
+  data->conn = conn;
+  
   if (conn != NULL)
   {
-    const char *address = (char *) data;
-  
     status = CONNECTED;
-    g_hash_table_insert (connections, strdup (address), conn);
-    sprintf (log_buff, "Connected to %s", address);
+    /* g_hash_table_insert (connections, strdup (data->address), conn); */
+    sprintf (log_buff, "Connected to %s", data->address);
+
+    msg_service_send (data->service, data->conn);
 
     LOG (log_buff);
   }
   else
   {
+    GSocketClient *socket = g_socket_client_new (); 
     /*TODO: parse GError and set the status to the appropriate value 
      *  (see gio/gioenums.h) */
-    if (error->code == 39) /*Connection refused */
-      status = CONNECTION_REFUSED;
-    else
-      status = DISCONNECTED;
-    sprintf (log_buff, "Error code: %d", error->code);
+    /* if (error->code == 39) /*Connection refused *1/ */
+    /*   status = CONNECTION_REFUSED; */
+    /* else */
+    /*   status = DISCONNECTED; */
+    /* sprintf (log_buff, "Error code: %d", error->code); */
 
     LOG (error->message);
     LOG (log_buff);
+    g_socket_client_connect_to_host_async (socket, data->address,
+        port == DEFAULT_PORT ? port + 1 :             
+        port - 1, NULL, evt_bind_async_connection_done, 
+        data);
   }
 #ifdef CEU_IN_CONNECT_DONE
   ceu_sys_go (&app, CEU_IN_CONNECT_DONE, &status);
@@ -210,6 +253,7 @@ connection_handler (GSocketService *service, GSocketConnection *connection,
     GObject *source, gpointer user_data)
 {
   GInputStream *input_stream = NULL;
+  msg_service *msg_handler = msg_service_new ();
 
   LOG ("New connection");
   input_stream = g_io_stream_get_input_stream (G_IO_STREAM (connection));
@@ -217,12 +261,14 @@ connection_handler (GSocketService *service, GSocketConnection *connection,
   while (g_socket_connection_is_connected (connection))
   {
     GError *error = NULL;
-    char buff [BUFF_SIZE];
+    char buff [BUFF_SIZE + 1];
     gssize bytes_read;
 
-    memset (buff, '\0', BUFF_SIZE);
-    bytes_read = g_input_stream_read (input_stream, &buff, BUFF_SIZE, NULL, 
-        &error);
+    memset (buff, 0, sizeof (char) * (BUFF_SIZE + 1));
+    /* bytes_read = g_input_stream_read (input_stream, &buff, BUFF_SIZE, NULL, */ 
+    /*     &error); */
+    bytes_read = msg_service_receive (msg_handler, connection, &buff[0], 
+        BUFF_SIZE);
 
     if (bytes_read > 0)
     {
@@ -261,6 +307,7 @@ connection_handler (GSocketService *service, GSocketConnection *connection,
     }
   }
 
+  msg_service_destroy (msg_handler);
   LOG ("Connection closed");
   
   return FALSE;
@@ -320,7 +367,7 @@ setup_service (void)
 }
 
 static gboolean 
-input_callback (GIOChannel *io, GIOCondition condition, gpointer data)
+keyboard_input_callback (GIOChannel *io, GIOCondition condition, gpointer data)
 {
   gchar key;
   GError *error = NULL;
@@ -403,7 +450,7 @@ main (int argc, char* argv[])
 
   evt_bindings = g_hash_table_new (g_str_hash, g_str_equal);
   connections = g_hash_table_new_full (g_str_hash, g_str_equal,
-      g_free, g_object_unref);
+      g_free, destroy_conn_data);
 
   L = luaL_newstate ();
   luaL_openlibs (L);
@@ -417,7 +464,7 @@ main (int argc, char* argv[])
 
   main_loop = g_main_loop_new (NULL, FALSE);
   in_channel = g_io_channel_unix_new (STDIN_FILENO);
-  g_io_add_watch (in_channel, G_IO_IN, input_callback, NULL); 
+  g_io_add_watch (in_channel, G_IO_IN, keyboard_input_callback, NULL); 
 
   old_dt = g_get_monotonic_time ();
 
