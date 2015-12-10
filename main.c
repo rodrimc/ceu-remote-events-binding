@@ -56,7 +56,7 @@ destroy_conn_data (gpointer _data)
   if (data->conn != NULL)
     g_object_unref (G_OBJECT(data->conn));
   msg_service_destroy (data->service);
-  free (data);
+  _free (data);
 }
 
 static void
@@ -76,10 +76,11 @@ free_evt_bindings ()
     {
       evt_bind *bind = (evt_bind *) l->data;
 
-      g_free (bind->out_evt);
-      g_free (bind->in_evt);
-      g_free (bind->address);
-
+      _free (bind->out_evt);
+      _free (bind->in_evt);
+      _free (bind->address);
+      _free (bind);
+      
       l = l->next;
     }
   }
@@ -170,13 +171,15 @@ env_output_evt_handler (const char *event, ...)
 
     serialized_args = serialize (L, bind->in_evt, encoded_args);
     msg_service_push (data->service, serialized_args, data); 
-    free (serialized_args);
+
+    _free (serialized_args);
+    _free (encoded_args);
 
     if (conn != NULL && g_socket_connection_is_connected(conn) == TRUE)
     {
       msg_service_send (data->service, conn);
     }
-    else
+    else if (data->has_pending == FALSE)
     {
       GSocketClient *socket = g_socket_client_new (); 
       g_socket_client_connect_to_host_async (socket, bind->address,
@@ -222,6 +225,7 @@ evt_bind_async_connection_done (GObject *obj, GAsyncResult *result,
     msg_service_send (data->service, data->conn);
 
     LOG (log_buff);
+    data->has_pending = FALSE;
   }
   else
   {
@@ -240,6 +244,7 @@ evt_bind_async_connection_done (GObject *obj, GAsyncResult *result,
         port == DEFAULT_PORT ? port + 1 :             
         port - 1, NULL, evt_bind_async_connection_done, 
         data);
+    data->has_pending = TRUE;
   }
 #ifdef CEU_IN_CONNECT_DONE
   ceu_sys_go (&app, CEU_IN_CONNECT_DONE, &status);
@@ -288,7 +293,8 @@ connection_handler (GSocketService *service, GSocketConnection *connection,
         LOG (msg);
         input_evt_handler (evt, size);
         for (i = 0; i < size; i++)
-          free (evt[i]);
+          _free (evt[i]);
+        _free (evt);
       }
       else
       {

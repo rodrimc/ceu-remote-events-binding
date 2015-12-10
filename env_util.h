@@ -18,6 +18,8 @@
 #define BUFF_SIZE 128
 #define ARGS_DELIMITER "*"
 
+#define _free(p) g_free(p); p=NULL
+
 typedef enum
 {
   DISCONNECTED = 0,
@@ -39,6 +41,7 @@ typedef struct _conn_data
   GSocketConnection *conn;
   msg_service *service;
   const char *address;
+  gboolean has_pending;
 } conn_data;
 
 void 
@@ -65,6 +68,5 @@ serialize (lua_State *, const char *, const char *);
 #endif
 
 #include "_ceu_app.h"
-
 
 #endif /* ENV_UTIL */

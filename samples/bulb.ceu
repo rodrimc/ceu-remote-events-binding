@@ -17,7 +17,7 @@ with
     _printf ("INTENSITY: %d\n", intensity);
   end
 with
-  await 100s;
+  await 15s;
 end
 
 escape 0;

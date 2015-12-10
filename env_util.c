@@ -80,6 +80,7 @@ parse_message (lua_State *L, char *buff, char ***evt, int *size)
   memmove (buff + len, buff, strlen (buff));
   strncpy (buff, prefix, len);
 
+  /* printf ("(%p) BUFF: %s\n", g_thread_self(), buff); */
   if (luaL_loadstring (L, buff) != 0 || lua_pcall(L, 0, 0, 0) != 0)
   {
     LOG (lua_tostring (L, -1));
@@ -91,17 +92,20 @@ parse_message (lua_State *L, char *buff, char ***evt, int *size)
   lua_pushnil (L);
   while (lua_next (L, 1) != 0)
   {
-    const char *key;
-    const char *value;
+    char *key;
+    char *value;
    
     *size = *size + 1;
-    key = lua_tostring (L, -2);
-    value = lua_tostring (L, -1);
+    key = strdup (lua_tostring (L, -2));
+    value = strdup (lua_tostring (L, -1));
     
     lua_pop (L, 2);
     lua_pushstring (L, value);
     lua_pushstring (L, key);
     lua_pushstring (L, key);
+
+    _free (key);
+    _free (value);
   }
 
   *evt = (char **) malloc (*size * sizeof (char *));
@@ -140,7 +144,7 @@ parse_message (lua_State *L, char *buff, char ***evt, int *size)
 char *
 serialize (lua_State *L, const char *evt, const char *args)
 {
-  const char *message = NULL;
+  char *message = NULL;
   const char *token;
   char *encoded_args = NULL; 
   char *saveptr;
@@ -169,52 +173,14 @@ serialize (lua_State *L, const char *evt, const char *args)
     token = strtok_r (NULL, ARGS_DELIMITER, &saveptr);
   }
   
-  free (encoded_args);
+  _free (encoded_args);
   
   if (lua_pcall (L, 1, 1, 0) != 0)
     LOG (lua_tostring (L, -1));
   else
-    message = lua_tostring (L, -1);
+    message = strdup (lua_tostring (L, -1));
 
   lua_pop (L, 1);  
 
-  return strdup(message);
+  return message;
 }
-
-/* char * */
-/* serialize (lua_State *L, const char *evt, va_list args) */
-/* { */
-/*   const char *message = NULL; */
-/*   const char *arg; */
-/*   int i = 0; */
-
-/*   luaL_loadstring (L, LUA_SERIALIZE_FUNC); */ 
-/*   lua_pcall(L, 0, 0, 0); */
-/*   lua_getglobal(L, "serialize"); */
- 
-/*   lua_newtable (L); */
-/*   lua_pushstring (L, "evt"); */
-/*   lua_pushstring (L, evt); */
-/*   lua_settable (L, -3); */
-
-/*   while ((arg = va_arg (args, const char*)) != NULL) */
-/*   { */
-/*     char prefix[6]; */
-    
-/*     sprintf (prefix, "arg%d", i++); */
-
-/*     lua_pushstring (L, prefix); */
-/*     lua_pushstring (L, arg); */
-/*     lua_settable (L, -3); */
-/*   } */
-  
-/*   if (lua_pcall (L, 1, 1, 0) != 0) */
-/*     LOG (lua_tostring (L, -1)); */
-/*   else */
-/*     message = lua_tostring (L, -1); */
-
-/*   lua_pop (L, 1); */  
-
-/*   return strdup(message); */
-/* } */
-
