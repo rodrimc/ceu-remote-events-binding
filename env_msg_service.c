@@ -2,6 +2,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 #define LOCK(m) g_mutex_lock(m)
 #define UNLOCK(m) g_mutex_unlock(m)
