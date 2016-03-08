@@ -59,6 +59,15 @@ parse_message (lua_State *, char *, char ***, int *);
 char *
 serialize (lua_State *, const char *, const char *);
 
+int
+env_bootstrap (int, char **);
+
+void
+env_set_timeout (int, GMainLoop *);
+
+void
+env_finalize ();
+
 #ifndef ceu_out_assert
   #define ceu_out_assert(v) ceu_sys_assert(v)
 #endif
@@ -68,5 +77,6 @@ serialize (lua_State *, const char *, const char *);
 #endif
 
 #include "_ceu_app.h"
+extern tceu_app app;
 
 #endif /* ENV_UTIL */
