@@ -1,0 +1,27 @@
+output void PLAY;
+output void STOP;
+output (s64) SEND_POS;
+
+native do
+end
+
+native @nohold _printf (), \
+               _play (),   \
+               _get_position (), \
+               _stop ();
+
+emit PLAY;
+
+par/or do
+  loop do
+    await 1s;
+    var s64 pos = _get_pos ();
+    emit SEND_POS => pos;
+  end
+with
+  await 10s;
+end
+
+emit STOP;
+
+escape 0;

@@ -1,6 +1,7 @@
 #ifndef ENV_EVENTS
 #define ENV_EVENTS
 
+#include <inttypes.h>
 #include <string.h>
 
 
@@ -25,5 +26,15 @@ void handle_key_event (const char *, int);
 
 #define ceu_out_emit_KEY_DOWN(arg)\
   handle_key_event ("KEY_DOWN", arg->_1)
+
+
+extern void play ();
+extern void stop ();
+extern int64_t get_pos ();
+
+#define ceu_out_emit_PLAY() play()
+#define ceu_out_emit_STOP() stop()
+#define ceu_out_emit_SEND_POS(arg) \
+  printf ("Pos: %" PRId64 "\n", arg->_1)
 
 #endif /* ENV_EVENTS */

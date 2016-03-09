@@ -44,7 +44,7 @@ input_evt_handler (char **evt, int size)
 }
 
 void handle_key_event (const char *evt, int value)
-{
+{
   char buff[5];
   sprintf (buff, "%d", value);
   env_output_evt_handler(evt, &buff[0], NULL);
