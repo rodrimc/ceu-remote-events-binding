@@ -365,6 +365,7 @@ env_output_evt_handler (const char *event, ...)
   }
 }
 
+#include "user_events.h"
 #include "env_events.h"
 #include "_ceu_app.c"
 
