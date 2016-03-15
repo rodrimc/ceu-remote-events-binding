@@ -9,6 +9,11 @@ static GMainLoop *main_loop;
 static GstElement *pipeline;
 static GstElement *sink;
 
+void
+input_evt_handler (char **evt, int size)
+{
+}
+
 static gboolean
 bus_cb (GstBus *bus, GstMessage *msg, gpointer data)
 {
