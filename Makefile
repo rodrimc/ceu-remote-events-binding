@@ -1,9 +1,13 @@
 CFLAGS = -DCEU_DEBUG `pkg-config gio-2.0 lua5.2 --cflags`
-LDFLAGS = `pkg-config gio-2.0 lua5.2 --libs`
+LDFLAGS = `pkg-config gio-2.0 lua5.2 --libs` -lm
 
 all: MAIN = main.c 
 all: CFLAGS += -DAPP_BULB
 all: compile 
+
+maestro: MAIN = maestro_main.c 
+maestro: CFLAGS += -DAPP_MAESTRO
+maestro: compile 
 
 player: MAIN = player_main.c 							
 player: CFLAGS += -DAPP_PLAYER

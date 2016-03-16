@@ -10,7 +10,6 @@
 #include <string.h>
 
 #ifdef APP_BULB
-
 /* Handlers for the BULB example */
 #define ceu_out_emit_OUT_1(arg) \
   env_output_evt_handler("OUT_1", NULL)
@@ -31,18 +30,42 @@ void play ();
 void stop ();
 int64_t get_pos ();
 
-#define ceu_out_emit_PLAY()                   \
-  play();                                     \
-  env_output_evt_handler("PLAY", NULL)        
+#define ceu_out_emit_REQUEST_SESSION(arg)               \
+  env_output_evt_handler("REQUEST_SESSION", NULL);      
 
-#define ceu_out_emit_STOP()                   \
-  stop();                                     \
-  env_output_evt_handler("STOP", NULL)        
+#define ceu_out_emit_REQUEST_JOIN(arg)                  \
+  char *buff1 = env_int_to_char (arg->_1);              \
+  char *buff2 = env_int_to_char (arg->_2);              \
+  env_output_evt_handler("REQUEST_JOIN", buff1, buff2,  \
+      NULL);                                            \
+  _free (buff1);                                        \
+  _free (buff2);
 
-#define ceu_out_emit_SEND_POS(arg)            \
-  printf ("Pos: %" PRId64 "\n", arg->_1);     \
-  env_output_evt_handler("SEND_POS", NULL)    \
+#define ceu_out_emit_PLAY()                             \
+  play();                                               \
+  env_output_evt_handler("PLAY", NULL)                  
+
+#define ceu_out_emit_STOP()                             \
+  stop();                                               \
+  env_output_evt_handler("STOP", NULL)                  
+
+#define ceu_out_emit_SEND_POS(arg)                      \
+  printf ("Pos: %" PRId64 "\n", arg->_1);               \
+  env_output_evt_handler("SEND_POS", NULL)              \
 /* arg->_1 should be passed as const char * */
+#endif
+
+#ifdef APP_MAESTRO
+/* Handlers and functions for the maestro example */
+#define ceu_out_emit_SESSION_CREATED(arg)               \
+  char *buff = env_int_to_char (arg->_1);               \
+  env_output_evt_handler("SESSION_CREATED", buff, NULL);\
+  _free (buff);
+
+#define ceu_out_emit_JOINED(arg)                        \
+  char *buff = env_int_to_char (arg->_1);               \
+  env_output_evt_handler("JOINED", buff, NULL);         \
+  _free (buff);
 
 #endif
 

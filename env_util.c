@@ -1,5 +1,6 @@
 #include <string.h>
 #include <stdlib.h>
+#include <math.h>
 #include "env_util.h"
 
 #define DEFAULT_PORT 8888
@@ -8,6 +9,7 @@
 /* Begin of global variables declaration */
 static GSocketService *service;
 static uint16_t port;
+static int my_id;
 static GHashTable *connections;     /* Connections table */
 static GHashTable *evt_bindings;    /* Event mappings table */
 static lua_State *L;
@@ -18,6 +20,7 @@ static GOptionEntry entries [] =
      "specifies the static route table", "<file>" },
    { "port", 'p', 0, G_OPTION_ARG_INT, &port, "Port to listen for incoming "
      "connections. Default=8888", "PORT" },
+   { "id", 'i', 0, G_OPTION_ARG_INT, &my_id, "ID to identify an instance. Default=0 ", "ID"},
    { NULL }
  };
 /* End */
@@ -285,7 +288,7 @@ send_done (GObject *obj, GAsyncResult *result, gpointer _data)
   data = (conn_data *) _data;
   bytes_written = g_output_stream_write_finish(G_OUTPUT_STREAM(obj), result,
       &error);
-  printf ("bytes written: %ld\n", bytes_written);
+  /* printf ("bytes written: %ld\n", bytes_written); */
   if (error == 0)
   {
 #ifdef CEU_IN_EVT_DELIVERED
@@ -615,12 +618,12 @@ env_bootstrap (int argc, char *argv[])
   L = luaL_newstate ();
   luaL_openlibs (L);
 
+  if (routes_file != NULL)
+    load_route_table();
+  
   app.data = (tceu_org*) &CEU_DATA;
   app.init = &ceu_app_init;
   app.init (&app);
-  
-  if (routes_file != NULL)
-    load_route_table();
   
   old_dt = g_get_monotonic_time ();
   
@@ -634,10 +637,31 @@ env_set_timeout (int freq, GMainLoop *loop)
     g_timeout_add (freq, update_ceu_time, loop);
 }
 
+int
+env_get_id ()
+{
+  return my_id;
+}
+
 void
 env_finalize ()
 {
   free_evt_bindings ();
   g_hash_table_destroy (evt_bindings);
   g_hash_table_destroy (connections);
+}
+
+char *
+env_int_to_char (int value)
+{
+  size_t size;
+  char *buff;
+  if (value == 0)
+    size = 2;
+  else
+    size = (size_t) (log10 ((double)abs(value)) + 2);
+
+  buff = (char *) malloc (size);
+  sprintf (buff, "%d", value);
+  return buff;
 }

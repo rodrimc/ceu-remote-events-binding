@@ -18,7 +18,7 @@
 #define BUFF_SIZE 128
 #define ARGS_DELIMITER "*"
 
-#define _free(p) g_free(p); p=NULL
+#define _free(p) g_free(p); p=NULL;
 
 typedef enum
 {
@@ -44,6 +44,12 @@ typedef struct _conn_data
   gboolean has_pending;
 } conn_data;
 
+typedef struct _pair_t
+{
+  int first;
+  int second;
+} pair_t;
+
 void 
 ceu_sys_assert (int);
 
@@ -67,6 +73,12 @@ env_set_timeout (int, GMainLoop *);
 
 void
 env_finalize ();
+
+char *
+env_int_to_char (int);
+
+int
+env_get_id ();
 
 #ifndef ceu_out_assert
   #define ceu_out_assert(v) ceu_sys_assert(v)

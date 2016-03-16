@@ -1,3 +1,5 @@
+#include <string.h>
+#include <stdlib.h>
 #include <gst/gst.h>
 #include <glib.h>
 #include <gio/gio.h>
@@ -12,6 +14,30 @@ static GstElement *sink;
 void
 input_evt_handler (char **evt, int size)
 {
+#ifdef CEU_IN_SESSION_CREATED
+  if (strcmp (evt[0], "SESSION_CREATED") == 0)
+  {
+    char *endptr;
+    int value;
+    value = (int) strtol (evt[1], &endptr, 10);
+    if (evt[1] != endptr)
+    {
+      ceu_sys_go (&app, CEU_IN_SESSION_CREATED, &value);
+    }
+  }
+#endif
+#ifdef CEU_IN_DEVICE_JOINED
+  if (strcmp (evt[0], "DEVICE_JOINED") == 0)
+  {
+    char *endptr;
+    int value;
+    value = (int) strtol (evt[1], &endptr, 10);
+    if (evt[1] != endptr)
+    {
+      ceu_sys_go (&app, CEU_IN_DEVICE_JOINED, &value);
+    }
+  }
+#endif
 }
 
 static gboolean
@@ -150,7 +176,7 @@ main(int argc, char *argv[])
   GstBus *bus;
   GIOChannel *in_channel;
 
-  if (argc != 2)
+  if (argc <= 2)
   {
     printf ("Usage: %s <uri>\n", argv[0]);
     return -1;

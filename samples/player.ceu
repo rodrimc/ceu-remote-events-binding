@@ -1,15 +1,21 @@
-output void PLAY;
-output void STOP;
+output (void) REQUEST_SESSION;
+output (int, int) REQUEST_JOIN; /* session_id, device_id */
+output (void) PLAY;
+output (void) STOP;
 output (s64) SEND_POS;
+input (int) SESSION_CREATED;
+input (int, int) DEVICE_JOINED;
 
-native do
-end
+emit REQUEST_SESSION;
+var int session_id = await SESSION_CREATED;
 
-native @nohold _printf (), \
-               _play (),   \
-               _get_position (), \
-               _stop ();
+_printf ("Session: %d\n", session_id);
 
+var int my_id = _env_get_id();
+
+emit REQUEST_JOIN => (session_id, my_id);
+var int s, d;
+(s, d) = await DEVICE_JOINED until (d == my_id);
 emit PLAY;
 
 par/or do

@@ -1,0 +1,45 @@
+input (void) CREATE_SESSION;
+input (_pair_t) JOIN;
+output (int) SESSION_CREATED;
+output (int, int) JOINED; /*(session, label)*/
+
+
+native @nohold _printf ();
+
+#define MAX_DEVICES 10
+
+class Maestro with
+  var int session_id;
+do
+  var int [MAX_DEVICES] devices;
+  _printf ("Session %d created\n", session_id);
+  emit SESSION_CREATED => session_id;
+  
+  par/or do
+    var _pair_t pair;
+    loop do
+      pair = await JOIN until (pair.first == session_id); 
+      devices = devices .. [pair.second];
+      _printf ("New device: %d\n", pair.second);
+      emit JOINED => (session_id, pair.second);
+    end
+  with
+    await 30s;
+  end
+  _printf ("Session %d: finalized\n", session_id);
+end
+
+var int session_count = 0;
+
+par/or do
+  every CREATE_SESSION do
+    spawn Maestro with
+      this.session_id = session_count;
+    end;
+    session_count = session_count + 1;
+  end
+with
+  await 20s;
+end
+
+escape 0;
