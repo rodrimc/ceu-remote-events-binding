@@ -12,7 +12,6 @@ static uint16_t port;
 static int my_id;
 static GHashTable *connections;     /* Connections table */
 static GHashTable *evt_bindings;    /* Event mappings table */
-static lua_State *L;
 static char *routes_file;
 static GOptionEntry entries [] = 
  {
@@ -183,14 +182,18 @@ parse_message (lua_State *L, char *buff, char ***evt, int *size)
 }
 
 char *
-serialize (lua_State *L, const char *evt, const char *args)
+serialize (const char *evt, const char *args)
 {
   char *message = NULL;
   const char *token;
   char *encoded_args = NULL; 
   char *saveptr;
   int i = 0;
-
+  lua_State *L;
+  
+  L = luaL_newstate ();
+  luaL_openlibs (L);
+  
   luaL_loadstring (L, LUA_SERIALIZE_FUNC); 
   lua_pcall(L, 0, 0, 0);
   lua_getglobal(L, "serialize");
@@ -223,6 +226,7 @@ serialize (lua_State *L, const char *evt, const char *args)
 
   lua_pop (L, 1);  
 
+  lua_close (L);
   return message;
 }
 
@@ -346,7 +350,7 @@ env_output_evt_handler (const char *event, ...)
 
     conn = data->conn;
 
-    serialized_args = serialize (L, bind->in_evt, encoded_args);
+    serialized_args = serialize (bind->in_evt, encoded_args);
     msg_service_push (data->service, serialized_args, data); 
 
     _free (serialized_args);
@@ -435,8 +439,12 @@ static gboolean
 connection_handler (GSocketService *service, GSocketConnection *connection,
     GObject *source, gpointer user_data)
 {
+  lua_State *L;
   GInputStream *input_stream = NULL;
   msg_service *msg_handler = msg_service_new ();
+  
+  L = luaL_newstate ();
+  luaL_openlibs (L);
 
   LOG ("New connection");
   input_stream = g_io_stream_get_input_stream (G_IO_STREAM (connection));
@@ -448,8 +456,6 @@ connection_handler (GSocketService *service, GSocketConnection *connection,
     gssize bytes_read;
 
     memset (buff, 0, sizeof (char) * (BUFF_SIZE + 1));
-    /* bytes_read = g_input_stream_read (input_stream, &buff, BUFF_SIZE, NULL, */ 
-    /*     &error); */
     bytes_read = msg_service_receive (msg_handler, connection, &buff[0], 
         BUFF_SIZE);
 
@@ -457,7 +463,7 @@ connection_handler (GSocketService *service, GSocketConnection *connection,
     {
       int size;
       char msg[64];
-      char **evt;
+      char **evt = NULL;
 
       LOG (buff);
 
@@ -471,7 +477,9 @@ connection_handler (GSocketService *service, GSocketConnection *connection,
         LOG (msg);
         input_evt_handler (evt, size);
         for (i = 0; i < size; i++)
+        {
           _free (evt[i]);
+        }
         _free (evt);
       }
       else
@@ -491,6 +499,7 @@ connection_handler (GSocketService *service, GSocketConnection *connection,
     }
   }
 
+  lua_close (L);
   msg_service_destroy (msg_handler);
   LOG ("Connection closed");
   
@@ -554,6 +563,11 @@ static void
 load_route_table ()
 {
   int index;
+  lua_State *L;
+  
+  L = luaL_newstate ();
+  luaL_openlibs (L);
+  
   if (luaL_loadfile (L, routes_file) != 0 || lua_pcall(L, 0, 1, 0) != 0)
   {
     printf ("%s", lua_tostring (L, -1));
@@ -585,6 +599,7 @@ load_route_table ()
     lua_pop (L, 1);
   }
   lua_pop (L, 1);
+  lua_close(L);
 }
 
 int
@@ -608,15 +623,13 @@ env_bootstrap (int argc, char *argv[])
   if (setup_service () == FALSE)
   {
     printf ("Could not setup the service.\nExiting...\n");
-    return 0;
+    return 1;
   }
 
   evt_bindings = g_hash_table_new (g_str_hash, g_str_equal);
   connections = g_hash_table_new_full (g_str_hash, g_str_equal,
       g_free, destroy_conn_data);
 
-  L = luaL_newstate ();
-  luaL_openlibs (L);
 
   if (routes_file != NULL)
     load_route_table();

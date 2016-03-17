@@ -63,7 +63,7 @@ int
 parse_message (lua_State *, char *, char ***, int *);
 
 char *
-serialize (lua_State *, const char *, const char *);
+serialize (const char *, const char *);
 
 int
 env_bootstrap (int, char **);

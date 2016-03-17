@@ -64,8 +64,10 @@ int64_t get_pos ();
 
 #define ceu_out_emit_JOINED(arg)                        \
   char *buff = env_int_to_char (arg->_1);               \
-  env_output_evt_handler("JOINED", buff, NULL);         \
-  _free (buff);
+  char *buff2 = env_int_to_char (arg->_2);              \
+  env_output_evt_handler("JOINED", buff, buff2, NULL);  \
+  _free (buff);                                         \
+  _free (buff2);
 
 #endif
 

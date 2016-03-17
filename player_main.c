@@ -30,11 +30,14 @@ input_evt_handler (char **evt, int size)
   if (strcmp (evt[0], "DEVICE_JOINED") == 0)
   {
     char *endptr;
-    int value;
-    value = (int) strtol (evt[1], &endptr, 10);
+    pair_t pair;
+    pair.first = (int) strtol (evt[1], &endptr, 10);
+    printf ("%d\n", size);
     if (evt[1] != endptr)
     {
-      ceu_sys_go (&app, CEU_IN_DEVICE_JOINED, &value);
+      pair.second = (int) strtol (evt[2], &endptr, 10);
+      if (evt[2] != endptr)
+        ceu_sys_go (&app, CEU_IN_DEVICE_JOINED, &pair);
     }
   }
 #endif
