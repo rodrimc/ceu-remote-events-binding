@@ -31,7 +31,7 @@ void stop ();
 int64_t get_pos ();
 
 #define ceu_out_emit_REQUEST_SESSION(arg)               \
-  env_output_evt_handler("REQUEST_SESSION", NULL);      
+  env_output_evt_handler("REQUEST_SESSION", NULL)      
 
 #define ceu_out_emit_REQUEST_JOIN(arg)                  \
   char *buff1 = env_int_to_char (arg->_1);              \
@@ -39,20 +39,24 @@ int64_t get_pos ();
   env_output_evt_handler("REQUEST_JOIN", buff1, buff2,  \
       NULL);                                            \
   _free (buff1);                                        \
-  _free (buff2);
+  _free (buff2)
 
-#define ceu_out_emit_PLAY()                             \
+#define ceu_out_emit_PLAY(arg)                          \
+  char *buff = env_int_to_char (arg->_1);               \
   play();                                               \
-  env_output_evt_handler("PLAY", NULL)                  
+  env_output_evt_handler("PLAY", buff, arg->_2, NULL);  \
+  _free (buff)
 
-#define ceu_out_emit_STOP()                             \
+#define ceu_out_emit_STOP(arg)                          \
+  char *buff = env_int_to_char (arg->_1);               \
   stop();                                               \
-  env_output_evt_handler("STOP", NULL)                  
+  env_output_evt_handler("STOP", buff, arg->_2, NULL);  \
+  _free (buff)
 
 #define ceu_out_emit_SEND_POS(arg)                      \
   printf ("Pos: %" PRId64 "\n", arg->_1);               \
   env_output_evt_handler("SEND_POS", NULL)              \
-/* arg->_1 should be passed as const char * */
+
 #endif
 
 #ifdef APP_MAESTRO

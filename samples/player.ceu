@@ -1,8 +1,9 @@
 output (void) REQUEST_SESSION;
 output (int, int) REQUEST_JOIN; /* session_id, device_id */
-output (void) PLAY;
-output (void) STOP;
+output (int, char&&) PLAY;
+output (int, char&&) STOP;
 output (s64) SEND_POS;
+
 input (int) SESSION_CREATED;
 input (int, int) DEVICE_JOINED;
 
@@ -16,7 +17,8 @@ var int my_id = _env_get_id();
 emit REQUEST_JOIN => (session_id, my_id);
 var int s, d;
 (s, d) = await DEVICE_JOINED until (d == my_id);
-emit PLAY;
+
+emit PLAY => (session_id, "video1");
 
 par/or do
   loop do
@@ -28,6 +30,6 @@ with
   await 10s;
 end
 
-emit STOP;
+emit STOP => (session_id, "video1");
 
 escape 0;

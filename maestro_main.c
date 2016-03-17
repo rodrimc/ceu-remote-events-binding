@@ -8,6 +8,18 @@
 
 static GMainLoop *main_loop;
 
+typedef struct _pair_int_t
+{
+  int first;
+  int second;
+} pair_int_t;
+
+typedef struct _pair_int_str_t
+{
+  int first;
+  char *second;
+} pair_int_str_t;
+
 void
 input_evt_handler (char **evt, int size)
 {
@@ -20,7 +32,7 @@ input_evt_handler (char **evt, int size)
 #ifdef CEU_IN_JOIN
   if (strcmp (evt[0], "JOIN") == 0)
   {
-    pair_t pair;
+    pair_int_t pair;
     char *endptr;
     
     pair.first = (int) strtol (evt[1], &endptr, 10);
@@ -29,6 +41,34 @@ input_evt_handler (char **evt, int size)
       pair.second = (int) strtol (evt[2], &endptr, 10);
       if (evt[2] != endptr)
         ceu_sys_go (&app, CEU_IN_JOIN, &pair);
+    }
+  }
+#endif
+#ifdef CEU_IN_MEDIA_BEGIN
+  if (strcmp (evt[0], "MEDIA_BEGIN") == 0)
+  {
+    pair_int_str_t pair;
+    char *endptr;
+
+    pair.first = (int) strtol (evt[1], &endptr, 10);
+    if (evt[1] != endptr)
+    {
+      pair.second = evt[2];
+      ceu_sys_go (&app, CEU_IN_MEDIA_BEGIN, &pair);
+    }
+  }
+#endif
+#ifdef CEU_IN_MEDIA_END
+  if (strcmp (evt[0], "MEDIA_END") == 0)
+  {
+    pair_int_str_t pair;
+    char *endptr;
+
+    pair.first = (int) strtol (evt[1], &endptr, 10);
+    if (evt[1] != endptr)
+    {
+      pair.second = evt[2];
+      ceu_sys_go (&app, CEU_IN_MEDIA_END, &pair);
     }
   }
 #endif

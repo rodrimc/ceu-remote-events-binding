@@ -1,5 +1,7 @@
 input (void) CREATE_SESSION;
-input (_pair_t) JOIN;
+input (int, int) JOIN;
+input (int, char&&) MEDIA_BEGIN;
+input (int, char&&) MEDIA_END;
 output (int) SESSION_CREATED;
 output (int, int) JOINED; /*(session, label)*/
 
@@ -16,15 +18,29 @@ do
   emit SESSION_CREATED => session_id;
   
   par/or do
-    var _pair_t pair;
+    var int s, id;
     loop do
-      pair = await JOIN until (pair.first == session_id); 
-      devices = devices .. [pair.second];
-      _printf ("New device: %d\n", pair.second);
-      emit JOINED => (session_id, pair.second);
+      (s, id) = await JOIN until (s == session_id); 
+      devices = devices .. [id];
+      _printf ("New device: %d\n", id);
+      emit JOINED => (session_id, id);
     end
   with
-    await 30s;
+    var int s;
+    loop do
+      var char&& media;
+      (s, media) = await MEDIA_BEGIN until (s == session_id);
+      _printf ("Media '%s' has begun.\n", media);
+    end
+  with
+    var int s;
+    loop do
+      var char&& media;
+      (s, media) = await MEDIA_END until (s == session_id);
+      _printf ("Media '%s' has ended.\n", media);
+    end
+  with
+    await FOREVER;
   end
   _printf ("Session %d: finalized\n", session_id);
 end
@@ -39,7 +55,7 @@ par/or do
     session_count = session_count + 1;
   end
 with
-  await 20s;
+  await FOREVER;
 end
 
 escape 0;

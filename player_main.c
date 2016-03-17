@@ -11,6 +11,12 @@ static GMainLoop *main_loop;
 static GstElement *pipeline;
 static GstElement *sink;
 
+typedef struct _pair_int_t
+{
+  int first;
+  int second;
+} pair_int_t;
+
 void
 input_evt_handler (char **evt, int size)
 {
@@ -30,7 +36,7 @@ input_evt_handler (char **evt, int size)
   if (strcmp (evt[0], "DEVICE_JOINED") == 0)
   {
     char *endptr;
-    pair_t pair;
+    pair_int_t pair;
     pair.first = (int) strtol (evt[1], &endptr, 10);
     if (evt[1] != endptr)
     {

@@ -44,12 +44,6 @@ typedef struct _conn_data
   gboolean has_pending;
 } conn_data;
 
-typedef struct _pair_t
-{
-  int first;
-  int second;
-} pair_t;
-
 void 
 ceu_sys_assert (int);
 
