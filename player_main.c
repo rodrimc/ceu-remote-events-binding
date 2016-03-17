@@ -32,7 +32,6 @@ input_evt_handler (char **evt, int size)
     char *endptr;
     pair_t pair;
     pair.first = (int) strtol (evt[1], &endptr, 10);
-    printf ("%d\n", size);
     if (evt[1] != endptr)
     {
       pair.second = (int) strtol (evt[2], &endptr, 10);
