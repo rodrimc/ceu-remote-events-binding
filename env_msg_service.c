@@ -1,11 +1,9 @@
 #include "env_msg_service.h"
+#include "env_util.h"
 
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
-
-#define LOCK(m) g_mutex_lock(m)
-#define UNLOCK(m) g_mutex_unlock(m)
 
 #define INDEXES_FOUND           0
 #define OPEN_BRACE_NOT_FOUND    1

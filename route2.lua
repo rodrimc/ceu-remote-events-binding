@@ -1,11 +1,16 @@
 return {
   -- Source: PLAYER
-  {"REQUEST_JOIN", "JOIN", "localhost"},
-  {"REQUEST_SESSION", "CREATE_SESSION", "localhost"},
-  {"PLAY", "MEDIA_BEGIN", "localhost"},
-  {"STOP", "MEDIA_END", "localhost"},
-
+  ['PLAYER'] = 
+  {
+    {"REQUEST_JOIN", "JOIN", "localhost:8888"},
+    {"REQUEST_SESSION", "CREATE_SESSION", "localhost:8888"},
+    {"PLAY", "MEDIA_BEGIN", "localhost:8888"},
+    {"STOP", "MEDIA_END", "localhost:8888"},
+  },
   -- Source: MAESTRO
-  {"SESSION_CREATED", "SESSION_CREATED", "localhost"},
-  {"JOINED", "DEVICE_JOINED", "localhost"},
+  ['MAESTRO'] = 
+  {
+    {"SESSION_CREATED", "SESSION_CREATED", "ANY"},
+    {"JOINED", "DEVICE_JOINED", "ANY"},
+  },
 }

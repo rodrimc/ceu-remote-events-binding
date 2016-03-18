@@ -15,6 +15,9 @@
 #define LOG(m)
 #endif
 
+#define LOCK(m) g_mutex_lock(m)
+#define UNLOCK(m) g_mutex_unlock(m)
+
 #define BUFF_SIZE 128
 #define ARGS_DELIMITER "*"
 
@@ -42,6 +45,9 @@ typedef struct _conn_data
   msg_service *service;
   const char *address;
   gboolean has_pending;
+  
+  /* Maybe this buffer could be in other struct */
+  char input_buff[BUFF_SIZE + 1]; 
 } conn_data;
 
 void 
@@ -70,6 +76,9 @@ env_finalize ();
 
 char *
 env_int_to_char (int);
+
+const char *
+env_get_class ();
 
 int
 env_get_id ();

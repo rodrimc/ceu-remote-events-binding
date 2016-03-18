@@ -184,13 +184,19 @@ main(int argc, char *argv[])
   GstBus *bus;
   GIOChannel *in_channel;
 
+  gst_init (&argc, &argv);
+  
+  if (env_bootstrap (argc, argv) != 0)
+  {
+    printf ("Error. Exiting...\n");
+    return 1;
+  }
   if (argc <= 2)
   {
     printf ("Usage: %s <uri>\n", argv[0]);
-    return -1;
+    return 1;
   }
   
-  gst_init (&argc, &argv);
  
   main_loop = g_main_loop_new (NULL, FALSE);
   in_channel = g_io_channel_unix_new (STDIN_FILENO);
@@ -212,11 +218,6 @@ main(int argc, char *argv[])
 
   env_set_timeout (1, main_loop);
   
-  if (env_bootstrap (argc, argv) != 0)
-  {
-    printf ("Error. Exiting...\n");
-    return 1;
-  }
 
   /*gst_element_set_state (pipeline, GST_STATE_PLAYING);*/
   g_main_loop_run (main_loop);

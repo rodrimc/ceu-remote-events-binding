@@ -4,7 +4,6 @@
 #include "env_util.h"
 #include "env_events.h"
 
-
 #define TIME_FREQ 1 /*frequency in which the update_ceu_time callback 
                       is called (ms) */
 void
