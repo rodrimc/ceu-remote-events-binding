@@ -1,0 +1,27 @@
+#ifndef _MAESTRO_DEFS
+#define _MAESTRO_DEFS
+
+#define MAX_DEVICES 10
+#define MAX_OBJECTS 100
+
+#define STOPPED 0
+#define PLAYING 1
+#define PAUSED  2
+
+input (void) CREATE_SESSION;
+input (int, int) JOIN;
+input (int, int, char&&, s64) MEDIA_BEGIN;
+input (int, char&&) MEDIA_END;
+
+output (int) SESSION_CREATED;
+output (int, int) JOINED; 
+output (int, int, char&&, s64) MEDIA_STARTED;
+
+data Media with
+  var char &&name;
+  var s64 begin_time;
+  var int state;
+  var int device;
+end
+
+#endif

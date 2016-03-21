@@ -17,6 +17,14 @@ typedef struct _pair_int_t
   int second;
 } pair_int_t;
 
+typedef struct __4tuple_t
+{
+  int first;
+  int second;
+  char *third;
+  int64_t fourth;
+} _4tuple_t;
+
 void
 input_evt_handler (char **evt, int size)
 {
@@ -43,6 +51,27 @@ input_evt_handler (char **evt, int size)
       pair.second = (int) strtol (evt[2], &endptr, 10);
       if (evt[2] != endptr)
         ceu_sys_go (&app, CEU_IN_DEVICE_JOINED, &pair);
+    }
+  }
+#endif
+#ifdef CEU_IN_START_MEDIA
+  if (strcmp (evt[0], "START_MEDIA") == 0)
+  {
+    _4tuple_t pair;
+    char *endptr;
+
+    pair.first = (int) strtol (evt[1], &endptr, 10);
+    if (evt[1] != endptr)
+    {
+      pair.second = (int) strtol (evt[2], &endptr, 10);
+      if (evt[2] != endptr)
+      {
+        pair.third = evt[3];
+        if (sscanf (evt[4], "%" SCNd64 "", &pair.fourth) != EOF)
+        {
+          ceu_sys_go (&app, CEU_IN_START_MEDIA, &pair);
+        }
+      }
     }
   }
 #endif

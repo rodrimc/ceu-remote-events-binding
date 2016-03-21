@@ -794,16 +794,22 @@ env_finalize ()
 }
 
 char *
-env_int_to_char (int value)
+env_int_to_char (int64_t value)
 {
   size_t size;
   char *buff;
   if (value == 0)
     size = 2;
   else
-    size = (size_t) (log10 ((double)abs(value)) + 2);
+    size = (size_t) (log10 ((double)abs(value < 0 ? value * -1 : value)) + 2);
 
   buff = (char *) malloc (size);
-  sprintf (buff, "%d", value);
+  sprintf (buff, "%" PRId64  "", value);
   return buff;
+}
+
+int64_t
+env_get_current_time ()
+{
+  return g_get_real_time ();
 }

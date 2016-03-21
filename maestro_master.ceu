@@ -1,0 +1,72 @@
+#include "maestro_defs.ceu"
+
+
+native do
+  ##include <string.h>
+end
+
+native @nohold _printf (), \
+               _strcmp ();
+
+class Maestro with
+  var int session_id;
+do
+  var int [MAX_DEVICES] devices;
+  var int obj_count = 0;
+  var Media [MAX_OBJECTS] objects;
+
+  event (void) notify_start;
+ 
+ _printf ("Session %d created\n", session_id);
+  emit SESSION_CREATED => session_id;
+  
+  par/or do
+    var int s, id;
+    loop do
+      (s, id) = await JOIN until (s == session_id); 
+      devices = devices .. [id];
+      _printf ("New device: %d\n", id);
+      emit JOINED => (session_id, id);
+      emit notify_start;
+    end
+  with
+    every (s, d, m, t) in MEDIA_BEGIN do
+      if s == session_id then
+        _printf ("Media '%s' has begun.\n", m);
+
+        var int index = -1;
+        loop i in obj_count do
+          if _strcmp (objects[i].name, m) == 0 then
+            index = i;
+          end
+        end
+        if index == -1 then
+          obj_count = obj_count + 1;
+          var Media tmp = Media (m, t, PLAYING, d);
+          objects = objects .. [ tmp ];
+        else
+          objects[index].state = PLAYING;
+        end
+      end
+    end
+  with
+    var int s;
+    loop do
+      var char&& media;
+      (s, media) = await MEDIA_END until (s == session_id);
+      _printf ("Media '%s' has ended.\n", media);
+    end
+  with
+    every notify_start do
+      loop i in obj_count do
+        var Media m = objects[i];
+        if m.state == PLAYING then 
+          emit MEDIA_STARTED => (session_id, m.device, m.name, m.begin_time);
+        end
+      end
+    end
+  with
+    await FOREVER;
+  end
+  _printf ("Session %d: finalized\n", session_id);
+end

@@ -1,0 +1,29 @@
+#include "player_defs.ceu"
+
+var int my_id = _env_get_id();
+var int session_id = 0; 
+var bool joined = false;
+
+par/or do
+  every (s, d) in DEVICE_JOINED do
+    if s == session_id then
+      if d == my_id then
+        _printf ("I've joined session %d\n", s);
+        joined = true;
+      else
+        _printf ("Device %d have joined session %d\n", d, s);
+      end
+    end
+  end
+with
+  every (s, d, m, t) in START_MEDIA do
+    if joined and d != my_id then 
+      _play ();
+    end
+  end
+with
+  emit REQUEST_JOIN => (session_id, my_id);
+  await FOREVER;
+end
+
+escape 0;

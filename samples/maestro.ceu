@@ -1,49 +1,7 @@
-input (void) CREATE_SESSION;
-input (int, int) JOIN;
-input (int, char&&) MEDIA_BEGIN;
-input (int, char&&) MEDIA_END;
-output (int) SESSION_CREATED;
-output (int, int) JOINED; /*(session, label)*/
-
-
-native @nohold _printf ();
+#include "maestro_master.ceu"
 
 #define MAX_DEVICES 10
-
-class Maestro with
-  var int session_id;
-do
-  var int [MAX_DEVICES] devices;
-  _printf ("Session %d created\n", session_id);
-  emit SESSION_CREATED => session_id;
-  
-  par/or do
-    var int s, id;
-    loop do
-      (s, id) = await JOIN until (s == session_id); 
-      devices = devices .. [id];
-      _printf ("New device: %d\n", id);
-      emit JOINED => (session_id, id);
-    end
-  with
-    var int s;
-    loop do
-      var char&& media;
-      (s, media) = await MEDIA_BEGIN until (s == session_id);
-      _printf ("Media '%s' has begun.\n", media);
-    end
-  with
-    var int s;
-    loop do
-      var char&& media;
-      (s, media) = await MEDIA_END until (s == session_id);
-      _printf ("Media '%s' has ended.\n", media);
-    end
-  with
-    await FOREVER;
-  end
-  _printf ("Session %d: finalized\n", session_id);
-end
+#define MAX_MEDIA 100
 
 var int session_count = 0;
 
@@ -53,6 +11,10 @@ par/or do
       this.session_id = session_count;
     end;
     session_count = session_count + 1;
+  end
+with
+  every (s, d, m, t) in MEDIA_BEGIN do
+    emit MEDIA_STARTED => (s, d, m, t);
   end
 with
   await FOREVER;

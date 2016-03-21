@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <stdlib.h>
 #include <glib.h>
@@ -20,9 +21,18 @@ typedef struct _pair_int_str_t
   char *second;
 } pair_int_str_t;
 
+typedef struct __4tuple_t
+{
+  int first;
+  int second;
+  char *third;
+  int64_t fourth;
+} _4tuple_t;
+
 void
 input_evt_handler (char **evt, int size)
 {
+  (void)size;
 #ifdef CEU_IN_CREATE_SESSION
   if (strcmp (evt[0], "CREATE_SESSION") == 0)
   {
@@ -47,14 +57,21 @@ input_evt_handler (char **evt, int size)
 #ifdef CEU_IN_MEDIA_BEGIN
   if (strcmp (evt[0], "MEDIA_BEGIN") == 0)
   {
-    pair_int_str_t pair;
+    _4tuple_t pair;
     char *endptr;
 
     pair.first = (int) strtol (evt[1], &endptr, 10);
     if (evt[1] != endptr)
     {
-      pair.second = evt[2];
-      ceu_sys_go (&app, CEU_IN_MEDIA_BEGIN, &pair);
+      pair.second = (int) strtol (evt[2], &endptr, 10);
+      if (evt[2] != endptr)
+      {
+        pair.third = evt[3];
+        if (sscanf (evt[4], "%" SCNd64 "", &pair.fourth) != EOF)
+        {
+          ceu_sys_go (&app, CEU_IN_MEDIA_BEGIN, &pair);
+        }
+      }
     }
   }
 #endif

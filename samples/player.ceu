@@ -1,35 +1,46 @@
-output (void) REQUEST_SESSION;
-output (int, int) REQUEST_JOIN; /* session_id, device_id */
-output (int, char&&) PLAY;
-output (int, char&&) STOP;
-output (s64) SEND_POS;
+#include "player_defs.ceu"
 
-input (int) SESSION_CREATED;
-input (int, int) DEVICE_JOINED;
+var int my_id = _env_get_id();
+var int session_id; 
+
+event void joined;
 
 emit REQUEST_SESSION;
-var int session_id = await SESSION_CREATED;
+session_id = await SESSION_CREATED;
 
 _printf ("Session: %d\n", session_id);
 
-var int my_id = _env_get_id();
-
-emit REQUEST_JOIN => (session_id, my_id);
-var int s, d;
-(s, d) = await DEVICE_JOINED until (d == my_id);
-
-emit PLAY => (session_id, "video1");
-
 par/or do
-  loop do
-    await 1s;
-    var s64 pos = _get_pos ();
-    emit SEND_POS => pos;
-  end
-with
+  emit REQUEST_JOIN => (session_id, my_id);
+  await joined;
+
+  var s64 cur_time = _env_get_current_time ();
+  emit PLAY => (session_id, my_id, "video1", cur_time);
   await 10s;
+with 
+  every (s, d) in DEVICE_JOINED do
+    if s == session_id then
+      if d == my_id then
+        _printf ("I've joined session %d\n", s);
+        emit joined;
+      else
+        _printf ("Device %d have joined session %d\n", d, s);
+      end
+    end
+  end
 end
 
-emit STOP => (session_id, "video1");
+
+/* par/or do */
+/*   loop do */
+/*     await 1s; */
+/*     var s64 pos = _get_pos (); */
+/*     emit SEND_POS => pos; */
+/*   end */
+/* with */
+/*   await 10s; */
+/* end */
+
+/* emit STOP => (session_id, "video1"); */
 
 escape 0;

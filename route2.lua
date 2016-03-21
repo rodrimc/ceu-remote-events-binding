@@ -11,6 +11,7 @@ return {
   ['MAESTRO'] = 
   {
     {"SESSION_CREATED", "SESSION_CREATED", "ANY"},
+    {"MEDIA_STARTED", "START_MEDIA", "ANY"},
     {"JOINED", "DEVICE_JOINED", "ANY"},
   },
 }

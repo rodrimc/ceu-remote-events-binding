@@ -75,13 +75,16 @@ void
 env_finalize ();
 
 char *
-env_int_to_char (int);
+env_int_to_char (int64_t);
 
 const char *
 env_get_class ();
 
 int
 env_get_id ();
+
+int64_t
+env_get_current_time ();
 
 #ifndef ceu_out_assert
   #define ceu_out_assert(v) ceu_sys_assert(v)

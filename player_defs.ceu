@@ -1,0 +1,24 @@
+#ifndef _PLAYER_DEFS
+#define _PLAYER_DEFS
+
+#define STOPPED 0
+#define PLAYING 1
+#define PAUSED  2
+
+output (void) REQUEST_SESSION;
+output (int, int) REQUEST_JOIN;
+output (int, int, char&&, s64) PLAY;
+output (int, char&&) STOP;
+output (s64) SEND_POS;
+
+input (int) SESSION_CREATED;
+input (int, int) DEVICE_JOINED;
+input (int, int, char&&, s64) START_MEDIA;
+
+data Media with
+  var char &&name;
+  var s64 begin_time;
+  var int state;
+end
+
+#endif
