@@ -3,6 +3,7 @@
 var int my_id = _env_get_id();
 var int session_id = 0; 
 var bool joined = false;
+var s64 init_time = 0;
 
 par/or do
   every (s, d) in DEVICE_JOINED do
@@ -18,9 +19,14 @@ par/or do
 with
   every (s, d, m, t) in START_MEDIA do
     if joined and d != my_id then 
+      init_time = t;
       _play ();
     end
   end
+with
+  await ELEMENT_STARTED;
+  _seek ((_env_get_current_time() - init_time) * 1000); /*nanoseconds*/
+  await 30s;
 with
   emit REQUEST_JOIN => (session_id, my_id);
   await FOREVER;

@@ -28,6 +28,7 @@ void handle_key_event (const char *, int);
 /* Handlers and functions for the player example */
 void play ();
 void stop ();
+void seek (int64_t);
 int64_t get_pos ();
 
 #define ceu_out_emit_REQUEST_SESSION(arg)                             \

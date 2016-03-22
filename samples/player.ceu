@@ -16,7 +16,7 @@ par/or do
 
   var s64 cur_time = _env_get_current_time ();
   emit PLAY => (session_id, my_id, "video1", cur_time);
-  await 10s;
+  await 30s;
 with 
   every (s, d) in DEVICE_JOINED do
     if s == session_id then

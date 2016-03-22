@@ -89,6 +89,35 @@ bus_cb (GstBus *bus, GstMessage *msg, gpointer data)
       g_main_loop_quit (loop);
       break;
     }
+    case GST_MESSAGE_STATE_CHANGED:
+    {
+      GstState old_state, new_state;
+      char buff[1024];
+
+      gst_message_parse_state_changed (msg, &old_state, &new_state, NULL);
+      if (GST_ELEMENT(msg->src) == pipeline)
+      {
+        if (old_state == GST_STATE_PAUSED && new_state == GST_STATE_PLAYING)
+        {
+#ifdef CEU_IN_ELEMENT_STARTED
+          ceu_sys_go (&app, CEU_IN_ELEMENT_STARTED, "video1");
+#endif
+        }
+        else if (new_state == GST_STATE_NULL)
+        {
+#ifdef CEU_IN_ELEMENT_STOPPED
+          ceu_sys_go (&app, CEU_IN_ELEMENT_STOPPED, "video1");
+#endif
+        }
+      }
+
+      sprintf (buff, "Element %s changed state from %s to %s.\n",
+          GST_OBJECT_NAME (msg->src),
+          gst_element_state_get_name (old_state), 
+          gst_element_state_get_name (new_state));
+      LOG (buff);
+      break;
+    }
     case GST_MESSAGE_ERROR:
     {
       char *debug;
@@ -107,6 +136,7 @@ bus_cb (GstBus *bus, GstMessage *msg, gpointer data)
       break;
     }
   }
+  return TRUE;
 }
 
 static void
@@ -169,7 +199,12 @@ play ()
 void
 seek (int64_t pos)
 {
-  /*TODO: */
+  pos *= GST_MSECOND;
+  if (pipeline != NULL)
+  {
+    gst_element_seek_simple (pipeline, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH | 
+        GST_SEEK_FLAG_KEY_UNIT, pos);
+  }
 }
 
 int64_t
