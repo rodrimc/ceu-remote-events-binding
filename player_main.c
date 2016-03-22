@@ -199,7 +199,6 @@ play ()
 void
 seek (int64_t pos)
 {
-  pos *= GST_MSECOND;
   if (pipeline != NULL)
   {
     gst_element_seek_simple (pipeline, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH | 
