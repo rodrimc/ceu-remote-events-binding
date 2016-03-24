@@ -249,18 +249,7 @@ main(int argc, char *argv[])
 
   gst_init (&argc, &argv);
   
-  if (env_bootstrap (argc, argv) != 0)
-  {
-    printf ("Error. Exiting...\n");
-    return 1;
-  }
-  if (argc <= 2)
-  {
-    printf ("Usage: %s <uri>\n", argv[0]);
-    return 1;
-  }
   
- 
   main_loop = g_main_loop_new (NULL, FALSE);
   in_channel = g_io_channel_unix_new (STDIN_FILENO);
   g_io_add_watch (in_channel, G_IO_IN, keyboard_input_callback, NULL); 
@@ -281,8 +270,17 @@ main(int argc, char *argv[])
 
   env_set_timeout (1, main_loop);
   
+  if (env_bootstrap (argc, argv) != 0)
+  {
+    fprintf (stderr, "Error. Exiting...\n");
+    return 1;
+  }
+  if (argc <= 2)
+  {
+    fprintf (stderr, "Usage: %s <uri> -c <CLASS>\n", argv[0]);
+    return 1;
+  }
 
-  /*gst_element_set_state (pipeline, GST_STATE_PLAYING);*/
   g_main_loop_run (main_loop);
 
   g_io_channel_unref (in_channel);

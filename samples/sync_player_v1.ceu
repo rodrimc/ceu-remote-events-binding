@@ -1,0 +1,18 @@
+#include "player_defs.ceu"
+
+#define MS_TO_NS 1000000
+
+var s64 ms = 0;
+var int tick_ms = 500;
+
+par/or do
+  _play ();
+  await 30s;
+with 
+  every (tick_ms)ms do
+    ms = ms + (s64) tick_ms;
+    _seek (ms * MS_TO_NS);
+  end
+end
+
+escape 0;
