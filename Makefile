@@ -18,11 +18,11 @@ player: compile
 compile:
 	ceu --cpp-args "-I ." $(CEUFILE)
 	gcc -Werror -g -Os $(MAIN) env_util.c env_msg_service.c \
-	$(CFLAGS) $(LDFLAGS) -o $(basename $(CEUFILE))
+	$(CFLAGS) $(LDFLAGS) -o $(basename $(CEUFILE)).out
 
 
 clean:
-	find . -name "*.exe"  | xargs rm -f
+	find . -name "*.out"  | xargs rm -f
 	find . -name "_ceu_*" | xargs rm -f
 
 .PHONY: all clean compile
